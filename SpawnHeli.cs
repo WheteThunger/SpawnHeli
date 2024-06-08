@@ -707,6 +707,8 @@ namespace Oxide.Plugins
 
             heli.rigidBody.velocity = Vector3.zero;
             heli.transform.SetPositionAndRotation(position, rotation);
+            heli.rigidBody.WakeUp();
+            heli.timeSinceLastPush = 0f;
             heli.UpdateNetworkGroup();
             heli.SendNetworkUpdateImmediate();
 
