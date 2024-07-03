@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Heli", "SpooksAU", "3.0.1")]
+    [Info("Spawn Heli", "SpooksAU", "3.0.2")]
     [Description("Allows players to spawn helicopters")]
     internal class SpawnHeli : CovalencePlugin
     {
@@ -598,7 +598,9 @@ namespace Oxide.Plugins
 
         private static void EnableUnlimitedFuel(PlayerHelicopter heli)
         {
-            var fuelSystem = heli.GetFuelSystem();
+            if (heli.GetFuelSystem() is not EntityFuelSystem fuelSystem)
+                return;
+
             fuelSystem.cachedHasFuel = true;
             fuelSystem.nextFuelCheckTime = float.MaxValue;
             fuelSystem.GetFuelContainer().SetFlag(BaseEntity.Flags.Locked, true);
@@ -814,7 +816,10 @@ namespace Oxide.Plugins
             if (fuelAmount == 0)
                 return;
 
-            var fuelContainer = heli.GetFuelSystem().GetFuelContainer();
+            if (heli.GetFuelSystem() is not EntityFuelSystem fuelSystem)
+                return;
+
+            var fuelContainer = fuelSystem.GetFuelContainer();
             if (fuelAmount < 0)
             {
                 // Value of -1 is documented to represent max stack size.
