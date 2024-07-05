@@ -7,6 +7,7 @@
 - Allows spawning personal helicopters with configurable fuel
 - Allows personal helicopters to function without fuel
 - Allows personal helicopters to be auto mounted when spawned or fetched
+- Allows personal helicopters to takeoff instantly
 - Allows configuring multiple spawn/fetch/despawn commands
 - Allows automatically fetching helicopters, as well as optionally repairing them, when using the spawn command, to simplify the experience for players
 
@@ -96,6 +97,12 @@ Allow the player to auto mount their helicopter when spawning or fetching it (re
 - `spawnheli.minicopter.automount`
 - `spawnheli.scraptransport.automount`
 - `spawnheli.attackhelicopter.automount`
+
+Allow the player's helicopter to takeoff instantly, bypassing engine startup time (requires feature to be enabled in the config, and permissions are only necessary if configured to require permission):
+- `spawnheli.all.instanttakeoff`
+- `spawnheli.minicopter.instanttakeoff`
+- `spawnheli.scraptransport.instanttakeoff`
+- `spawnheli.attackhelicopter.instanttakeoff`
 
 ### Fuel permissions
 
@@ -246,6 +253,10 @@ Default configuration:
       "Enabled": false,
       "Require permission": false
     },
+    "Instant takeoff": {
+      "Enabled": false,
+      "Require permission": false
+    },
     "Only owner and team can mount": false,
     "Spawn health": 750.0,
     "Destroy on disconnect": false,
@@ -329,6 +340,10 @@ Default configuration:
       "Enabled": false,
       "Require permission": false
     },
+    "Instant takeoff": {
+      "Enabled": false,
+      "Require permission": false
+    },
     "Only owner and team can mount": false,
     "Spawn health": 1000.0,
     "Destroy on disconnect": false,
@@ -409,6 +424,10 @@ Default configuration:
       "Helicopter rotation angle": 90.0
     },
     "Auto mount": {
+      "Enabled": false,
+      "Require permission": false
+    },
+    "Instant takeoff": {
       "Enabled": false,
       "Require permission": false
     },
@@ -497,6 +516,9 @@ Each vehicle section (`Minicopter`, `ScrapTransportHelicopter`, and `AttackHelic
 - `Auto mount` -- When enabled, spawning or fetching a helicopter will automatically mount the owner player to the pilot seat. Note: Giving a player a helicopter using admin/server commands will skip auto mount.
   - `Enabled` (`true` or `false`) -- Determines whether auto mount is enabled.
   - `Require permission` (`true` or `false`) -- Determines whether players need permission for the auto mount feature.
+- `Instant takeoff` -- When enabled, helicopters spawned by this plugin can takeoff instantly, bypassing engine startup time.
+  - `Enabled` (`true` or `false`) -- Determines whether instant takeoff is enabled.
+  - `Require permission` (`true` or `false`) -- Determines whether the owner of the helicopter needs permission for this feature to work.
 - `Only owner and team can mount` (`true` or `false`) -- Set to `true` to only allow the owner and their team members to be able to mount the helicopter.
 - `Destroy on disconnect` (`true` or `false`) -- Determines whether player helicopters will be despawned when the owner disconnects from the server. Note: If a player is mounted to the helicopter when the owner disconnects, the despawn will be delayed until no more players are mounted to the it.
 - `Fuel` -- Determines how much fuel helicopters will spawn with. Note: Fuel configuration does not apply to players that have the unlimited fuel permission.

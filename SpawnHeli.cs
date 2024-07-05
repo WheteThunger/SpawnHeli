@@ -67,6 +67,11 @@ namespace Oxide.Plugins
                 Unsubscribe(nameof(OnPlayerDisconnected));
                 Unsubscribe(nameof(OnEntityDismounted));
             }
+
+            if (!_vehicleInfoManager.AnyInstantTakeoff)
+            {
+                Unsubscribe(nameof(OnEngineStarted));
+            }
         }
 
         private void OnServerInitialized()
@@ -255,6 +260,25 @@ namespace Oxide.Plugins
                 return;
 
             player.ChatMessage(GetMessage(player.UserIDString, LangEntry.ErrorUnlimitedFuel));
+        }
+
+        private void OnEngineStarted(PlayerHelicopter heli, BasePlayer player)
+        {
+            if (!heli.engineController.IsStarting)
+                return;
+
+            if (!IsPlayerVehicle(heli, out var vehicleInfo))
+                return;
+
+            if (!vehicleInfo.Config.InstantTakeoff.Enabled)
+                return;
+
+            if (vehicleInfo.Config.InstantTakeoff.RequirePermission
+                && !HasPermission(player, vehicleInfo.Permissions.InstantTakeoff, VehicleInfo.All.InstantTakeoff))
+                return;
+
+            heli.CancelInvoke(heli.engineController.FinishStartingEngine);
+            heli.engineController.FinishStartingEngine();
         }
 
         #endregion
@@ -923,6 +947,7 @@ namespace Oxide.Plugins
                         NoDecay = BuildPermission(vehicleName, "nodecay"),
                         NoCooldown = BuildPermission(vehicleName, "nocooldown"),
                         AutoMount = BuildPermission(vehicleName, "automount"),
+                        InstantTakeoff = BuildPermission(vehicleName, "instanttakeoff"),
                     };
                 }
 
@@ -938,6 +963,7 @@ namespace Oxide.Plugins
                 public string NoDecay { get; private set; }
                 public string NoCooldown { get; private set; }
                 public string AutoMount { get; private set; }
+                public string InstantTakeoff { get; private set; }
 
                 private PermissionSet() {}
 
@@ -950,6 +976,7 @@ namespace Oxide.Plugins
                     yield return NoDecay;
                     yield return NoCooldown;
                     yield return AutoMount;
+                    yield return InstantTakeoff;
                 }
             }
 
@@ -1040,6 +1067,7 @@ namespace Oxide.Plugins
 
             public bool AnyOwnerOnly => AllVehicles.Any(vehicleInfo => vehicleInfo.Config.OnlyOwnerAndTeamCanMount);
             public bool AnyDespawnOnDisconnect => AllVehicles.Any(vehicleInfo => vehicleInfo.Config.DespawnOnDisconnect);
+            public bool AnyInstantTakeoff => AllVehicles.Any(vehicleInfo => vehicleInfo.Config.InstantTakeoff.Enabled);
 
             private Configuration _config => _plugin._config;
             private SaveData _data => _plugin._data;
@@ -1501,6 +1529,16 @@ namespace Oxide.Plugins
         }
 
         [JsonObject(MemberSerialization.OptIn)]
+        private class InstantTakeoffConfig
+        {
+            [JsonProperty("Enabled")]
+            public bool Enabled;
+
+            [JsonProperty("Require permission")]
+            public bool RequirePermission;
+        }
+
+        [JsonObject(MemberSerialization.OptIn)]
         private class VehicleConfig
         {
             [JsonProperty("Spawn commands")]
@@ -1544,6 +1582,9 @@ namespace Oxide.Plugins
 
             [JsonProperty("Auto mount")]
             public AutoMountConfig AutoMount = new AutoMountConfig();
+
+            [JsonProperty("Instant takeoff")]
+            public InstantTakeoffConfig InstantTakeoff = new InstantTakeoffConfig();
 
             [JsonProperty("Only owner and team can mount")]
             public bool OnlyOwnerAndTeamCanMount;
