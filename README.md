@@ -52,11 +52,13 @@ All of the plugin permission have been renamed. Here are the highlights.
 ### Basic permissions
 
 Allow the player to spawn a helicopter (e.g., `/mymini`, `/myheli`, `/myattack`):
+- `spawnheli.all.spawn`
 - `spawnheli.minicopter.spawn`
 - `spawnheli.scraptransport.spawn`
 - `spawnheli.attackhelicopter.spawn`
 
 Allow the player to fetch their existing helicopter (e.g,. `/fmini`, `/fheli`, `/fattack`):
+- `spawnheli.all.fetch`
 - `spawnheli.minicopter.fetch`
 - `spawnheli.scraptransport.fetch`
 - `spawnheli.attackhelicopter.fetch`
@@ -64,21 +66,25 @@ Allow the player to fetch their existing helicopter (e.g,. `/fmini`, `/fheli`, `
 Note: The fetch permissions are required to make the spawn command fetch the player's existing helicopter when using the `"Auto fetch": true` configuration option.
 
 Allow the player to despawn their existing helicopter (e.g., `/nomini`, `/noheli`, `/noattack`):
+- `spawnheli.all.despawn`
 - `spawnheli.minicopter.despawn`
 - `spawnheli.scraptransport.despawn`
 - `spawnheli.attackhelicopter.despawn`
 
 Allow the player's helicopter to function without fuel:
+- `spawnheli.all.unlimitedfuel`
 - `spawnheli.minicopter.unlimitedfuel`
 - `spawnheli.scraptransport.unlimitedfuel`
 - `spawnheli.attackhelicopter.unlimitedfuel`
 
 Disable decay damage to the player's helicopter:
+- `spawnheli.all.nodecay`
 - `spawnheli.minicopter.nodecay`
 - `spawnheli.scraptransport.nodecay`
 - `spawnheli.attackhelicopter.nodecay`
 
 Allow the player to spawn their helicopter as often as they would like:
+- `spawnheli.all.nocooldown`
 - `spawnheli.minicopter.nocooldown`
 - `spawnheli.scraptransport.nocooldown`
 - `spawnheli.attackhelicopter.nocooldown`
@@ -86,6 +92,7 @@ Allow the player to spawn their helicopter as often as they would like:
 **Caution:** Allowing helicopters to be respawned too frequently could be abused by players to reduce server performance. Alternatively, you can rely on the default cooldown configuration option, and/or grant non-zero cooldowns using permissions (see below).
 
 Allow the player to auto mount their helicopter when spawning or fetching it (requires feature to be enabled in the config, and permissions are only necessary if configured to require permission):
+- `spawnheli.all.automount`
 - `spawnheli.minicopter.automount`
 - `spawnheli.scraptransport.automount`
 - `spawnheli.attackhelicopter.automount`

@@ -49,6 +49,12 @@ namespace Oxide.Plugins
         {
             _data = SaveData.Load();
             _config.Init();
+
+            foreach (var perm in VehicleInfo.All.GetAllPermissions())
+            {
+                permission.RegisterPermission(perm, this);
+            }
+
             _vehicleInfoManager.Init();
 
             if (!_vehicleInfoManager.AnyOwnerOnly)
@@ -82,7 +88,7 @@ namespace Oxide.Plugins
                 if (vehicleInfo == null || !vehicleInfo.Data.HasVehicle(heli))
                     continue;
 
-                if (heli.OwnerID != 0 && permission.UserHasPermission(heli.OwnerID.ToString(), vehicleInfo.Permissions.UnlimitedFuel))
+                if (heli.OwnerID != 0 && HasPermission(heli.OwnerID.ToString(), vehicleInfo.Permissions.UnlimitedFuel, VehicleInfo.All.UnlimitedFuel))
                 {
                     EnableUnlimitedFuel(heli);
                 }
@@ -137,7 +143,7 @@ namespace Oxide.Plugins
                 return null;
 
             if (info.damageTypes.Has(Rust.DamageType.Decay)
-                && permission.UserHasPermission(heli.OwnerID.ToString(), vehicleInfo.Permissions.NoDecay))
+                && HasPermission(heli.OwnerID.ToString(), vehicleInfo.Permissions.NoDecay, VehicleInfo.All.NoDecay))
                 return True;
 
             return null;
@@ -245,7 +251,7 @@ namespace Oxide.Plugins
             if (heli == null || !IsPlayerVehicle(heli, out vehicleInfo))
                 return;
 
-            if (!permission.UserHasPermission(heli.OwnerID.ToString(), vehicleInfo.Permissions.UnlimitedFuel))
+            if (!HasPermission(heli.OwnerID.ToString(), vehicleInfo.Permissions.UnlimitedFuel, VehicleInfo.All.UnlimitedFuel))
                 return;
 
             player.ChatMessage(GetMessage(player.UserIDString, LangEntry.ErrorUnlimitedFuel));
@@ -269,13 +275,13 @@ namespace Oxide.Plugins
             BasePlayer basePlayer;
             if (vehicleInfo == null
                 || !VerifyPlayer(player, out basePlayer)
-                || !VerifyPermission(player, vehicleInfo.Permissions.Spawn))
+                || !VerifyPermission(player, vehicleInfo.Permissions.Spawn, VehicleInfo.All.Spawn))
                 return;
 
             var heli = FindPlayerVehicle(vehicleInfo, basePlayer);
             if (heli != null)
             {
-                if (vehicleInfo.Config.AutoFetch && permission.UserHasPermission(player.Id, vehicleInfo.Permissions.Fetch))
+                if (vehicleInfo.Config.AutoFetch && HasPermission(player, vehicleInfo.Permissions.Fetch, VehicleInfo.All.Fetch))
                 {
                     FetchVehicle(vehicleInfo, player, basePlayer, heli);
                 }
@@ -320,7 +326,7 @@ namespace Oxide.Plugins
             if (heli == null)
                 return;
 
-            if (!permission.UserHasPermission(basePlayer.UserIDString, vehicleInfo.Permissions.NoCooldown))
+            if (!HasPermission(basePlayer, vehicleInfo.Permissions.NoCooldown, VehicleInfo.All.NoCooldown))
             {
                 _data.StartSpawnCooldown(vehicleInfo, basePlayer);
             }
@@ -341,7 +347,7 @@ namespace Oxide.Plugins
             PlayerHelicopter heli;
             if (vehicleInfo == null
                 || !VerifyPlayer(player, out basePlayer)
-                || !VerifyPermission(player, vehicleInfo.Permissions.Fetch)
+                || !VerifyPermission(player, vehicleInfo.Permissions.Fetch, VehicleInfo.All.Fetch)
                 || !VerifyVehicleExists(player, basePlayer, vehicleInfo, out heli))
                 return;
 
@@ -363,7 +369,7 @@ namespace Oxide.Plugins
             PlayerHelicopter heli;
             if (vehicleInfo == null
                 || !VerifyPlayer(player, out basePlayer)
-                || !VerifyPermission(player, vehicleInfo.Permissions.Despawn)
+                || !VerifyPermission(player, vehicleInfo.Permissions.Despawn, VehicleInfo.All.Despawn)
                 || !VerifyVehicleExists(player, basePlayer, vehicleInfo, out heli))
                 return;
 
@@ -490,9 +496,25 @@ namespace Oxide.Plugins
             }
         }
 
-        private bool VerifyPermission(IPlayer player, string perm)
+        private bool HasPermission(string playerId, string perm1, string perm2 = null)
         {
-            if (permission.UserHasPermission(player.Id, perm))
+            return permission.UserHasPermission(playerId, perm1)
+                   || (perm2 != null && permission.UserHasPermission(playerId, perm2));
+        }
+
+        private bool HasPermission(BasePlayer player, string perm1, string perm2 = null)
+        {
+            return HasPermission(player.UserIDString, perm1, perm2);
+        }
+
+        private bool HasPermission(IPlayer player, string perm1, string perm2 = null)
+        {
+            return HasPermission(player.Id, perm1, perm2);
+        }
+
+        private bool VerifyPermission(IPlayer player, string perm1, string perm2 = null)
+        {
+            if (HasPermission(player, perm1, perm2))
                 return true;
 
             player.Reply(GetMessage(player.Id, LangEntry.ErrorNoPermission));
@@ -563,7 +585,7 @@ namespace Oxide.Plugins
         {
             DateTime cooldownStart;
             if (!cooldownMap.TryGetValue(player.UserIDString, out cooldownStart)
-                || permission.UserHasPermission(player.UserIDString, vehicleInfo.Permissions.NoCooldown))
+                || HasPermission(player.UserIDString, vehicleInfo.Permissions.NoCooldown))
                 return true;
 
             var timeRemaining = CeilingTimeSpan(cooldownStart.AddSeconds(GetPlayerCooldownSeconds(cooldownConfig, player)) - DateTime.Now);
@@ -701,7 +723,7 @@ namespace Oxide.Plugins
                 return false;
 
             return !mountConfig.RequirePermission
-                   || permission.UserHasPermission(player.UserIDString, vehicleInfo.Permissions.AutoMount);
+                   || HasPermission(player, vehicleInfo.Permissions.AutoMount, VehicleInfo.All.AutoMount);
         }
 
         private void MaybeAutoMount(VehicleInfo vehicleInfo, BasePlayer player, PlayerHelicopter heli)
@@ -760,7 +782,7 @@ namespace Oxide.Plugins
             heli.UpdateNetworkGroup();
             NetworkUtils.SendUpdateImmediateRecursive(heli);
 
-            if (!permission.UserHasPermission(basePlayer.UserIDString, vehicleInfo.Permissions.NoCooldown))
+            if (!HasPermission(basePlayer, vehicleInfo.Permissions.NoCooldown, VehicleInfo.All.NoCooldown))
             {
                 _data.StartFetchCooldown(vehicleInfo, basePlayer);
             }
@@ -782,7 +804,7 @@ namespace Oxide.Plugins
 
             heli.Spawn();
 
-            if (permission.UserHasPermission(player.UserIDString, vehicleInfo.Permissions.UnlimitedFuel))
+            if (HasPermission(player, vehicleInfo.Permissions.UnlimitedFuel, VehicleInfo.All.UnlimitedFuel))
             {
                 EnableUnlimitedFuel(heli);
             }
@@ -836,8 +858,7 @@ namespace Oxide.Plugins
                 for (var i = profileList.Length - 1; i >= 0; i--)
                 {
                     var profile = profileList[i];
-                    if (profile.Permission != null
-                        && permission.UserHasPermission(player.UserIDString, profile.Permission))
+                    if (profile.Permission != null && HasPermission(player, profile.Permission))
                         return profile.CooldownSeconds;
                 }
             }
@@ -854,8 +875,7 @@ namespace Oxide.Plugins
                 for (var i = profileList.Length - 1; i >= 0; i--)
                 {
                     var profile = profileList[i];
-                    if (profile.Permission != null
-                        && permission.UserHasPermission(player.UserIDString, profile.Permission))
+                    if (profile.Permission != null && HasPermission(player, profile.Permission))
                         return profile.FuelAmount;
                 }
             }
@@ -888,15 +908,49 @@ namespace Oxide.Plugins
 
         private class VehicleInfo
         {
+            public static PermissionSet All = PermissionSet.ForVehicle("all");
+
             public class PermissionSet
             {
-                public string Spawn;
-                public string Fetch;
-                public string Despawn;
-                public string UnlimitedFuel;
-                public string NoDecay;
-                public string NoCooldown;
-                public string AutoMount;
+                public static PermissionSet ForVehicle(string vehicleName)
+                {
+                    return new PermissionSet
+                    {
+                        Spawn = BuildPermission(vehicleName, "spawn"),
+                        Fetch = BuildPermission(vehicleName, "fetch"),
+                        Despawn = BuildPermission(vehicleName, "despawn"),
+                        UnlimitedFuel = BuildPermission(vehicleName, "unlimitedfuel"),
+                        NoDecay = BuildPermission(vehicleName, "nodecay"),
+                        NoCooldown = BuildPermission(vehicleName, "nocooldown"),
+                        AutoMount = BuildPermission(vehicleName, "automount"),
+                    };
+                }
+
+                private static string BuildPermission(string vehicleName, string featureName)
+                {
+                    return $"{nameof(SpawnHeli)}.{vehicleName}.{featureName}".ToLower();
+                }
+
+                public string Spawn { get; private set; }
+                public string Fetch { get; private set; }
+                public string Despawn { get; private set; }
+                public string UnlimitedFuel { get; private set; }
+                public string NoDecay { get; private set; }
+                public string NoCooldown { get; private set; }
+                public string AutoMount { get; private set; }
+
+                private PermissionSet() {}
+
+                public IEnumerable<string> GetAllPermissions()
+                {
+                    yield return Spawn;
+                    yield return Fetch;
+                    yield return Despawn;
+                    yield return UnlimitedFuel;
+                    yield return NoDecay;
+                    yield return NoCooldown;
+                    yield return AutoMount;
+                }
             }
 
             public class HookSet
@@ -927,25 +981,12 @@ namespace Oxide.Plugins
             public void Init(SpawnHeli plugin)
             {
                 GiveCommand = $"{nameof(SpawnHeli)}.{VehicleName}.give".ToLower();
+                Permissions = PermissionSet.ForVehicle(VehicleName);
 
-                Permissions = new PermissionSet
+                foreach (var perm in Permissions.GetAllPermissions())
                 {
-                    Spawn = BuildPermission("spawn"),
-                    Fetch = BuildPermission("fetch"),
-                    Despawn = BuildPermission("despawn"),
-                    UnlimitedFuel = BuildPermission("unlimitedfuel"),
-                    NoDecay = BuildPermission("nodecay"),
-                    NoCooldown = BuildPermission("nocooldown"),
-                    AutoMount = BuildPermission("automount"),
-                };
-
-                plugin.permission.RegisterPermission(Permissions.Spawn, plugin);
-                plugin.permission.RegisterPermission(Permissions.Fetch, plugin);
-                plugin.permission.RegisterPermission(Permissions.Despawn, plugin);
-                plugin.permission.RegisterPermission(Permissions.UnlimitedFuel, plugin);
-                plugin.permission.RegisterPermission(Permissions.NoDecay, plugin);
-                plugin.permission.RegisterPermission(Permissions.NoCooldown, plugin);
-                plugin.permission.RegisterPermission(Permissions.AutoMount, plugin);
+                    plugin.permission.RegisterPermission(perm, plugin);
+                }
 
                 if (Config.FuelConfig.FuelProfiles != null)
                 {
@@ -984,11 +1025,6 @@ namespace Oxide.Plugins
             public void OnServerInitialized()
             {
                 PrefabId = GameManager.server.FindPrefab(PrefabPath)?.GetComponent<BaseEntity>()?.prefabID ?? 0;
-            }
-
-            private string BuildPermission(string permissionSuffix)
-            {
-                return $"{nameof(SpawnHeli)}.{VehicleName}.{permissionSuffix}".ToLower();
             }
         }
 
