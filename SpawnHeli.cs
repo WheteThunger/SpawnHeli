@@ -478,6 +478,18 @@ namespace Oxide.Plugins
             return true;
         }
 
+        private static void TryMountPlayer(BasePlayer player, PlayerHelicopter heli)
+        {
+            foreach (var mountPoint in heli.mountPoints)
+            {
+                if (mountPoint.isDriver)
+                {
+                    mountPoint.mountable.AttemptMount(player, doMountChecks: false);
+                    break;
+                }
+            }
+        }
+
         private bool VerifyPermission(IPlayer player, string perm)
         {
             if (permission.UserHasPermission(player.Id, perm))
@@ -682,6 +694,24 @@ namespace Oxide.Plugins
             return heli;
         }
 
+        private bool ShouldAutoMount(VehicleInfo vehicleInfo, BasePlayer player)
+        {
+            var mountConfig = vehicleInfo.Config.AutoMount;
+            if (!mountConfig.Enabled)
+                return false;
+
+            return !mountConfig.RequirePermission
+                   || permission.UserHasPermission(player.UserIDString, vehicleInfo.Permissions.AutoMount);
+        }
+
+        private void MaybeAutoMount(VehicleInfo vehicleInfo, BasePlayer player, PlayerHelicopter heli)
+        {
+            if (!ShouldAutoMount(vehicleInfo, player))
+                return;
+
+            TryMountPlayer(player, heli);
+        }
+
         private void FetchVehicle(VehicleInfo vehicleInfo, IPlayer player, BasePlayer basePlayer, PlayerHelicopter heli)
         {
             var isOccupied = IsHeliOccupied(heli);
@@ -734,9 +764,11 @@ namespace Oxide.Plugins
             {
                 _data.StartFetchCooldown(vehicleInfo, basePlayer);
             }
+
+            MaybeAutoMount(vehicleInfo, basePlayer, heli);
         }
 
-        private PlayerHelicopter SpawnVehicle(VehicleInfo vehicleInfo, BasePlayer player, Vector3 position, Quaternion rotation)
+        private PlayerHelicopter SpawnVehicle(VehicleInfo vehicleInfo, BasePlayer player, Vector3 position, Quaternion rotation, bool allowAutoMount = true)
         {
             var heli = GameManager.server.CreateEntity(vehicleInfo.PrefabPath, position, rotation) as PlayerHelicopter;
             if (heli == null)
@@ -760,6 +792,11 @@ namespace Oxide.Plugins
             }
 
             _data.RegisterVehicle(vehicleInfo, player.UserIDString, heli);
+            if (allowAutoMount)
+            {
+                MaybeAutoMount(vehicleInfo, player, heli);
+            }
+
             return heli;
         }
 
@@ -774,7 +811,7 @@ namespace Oxide.Plugins
 
             var position = customPosition ?? GetFixedPositionForPlayer(vehicleInfo, player);
             var rotation = customPosition.HasValue ? Quaternion.identity : GetFixedRotationForPlayer(vehicleInfo, player);
-            SpawnVehicle(vehicleInfo, player, position, rotation);
+            SpawnVehicle(vehicleInfo, player, position, rotation, allowAutoMount: false);
         }
 
         private bool TryDespawnHeli(VehicleInfo vehicleInfo, PlayerHelicopter heli, BasePlayer basePlayer)
@@ -859,6 +896,7 @@ namespace Oxide.Plugins
                 public string UnlimitedFuel;
                 public string NoDecay;
                 public string NoCooldown;
+                public string AutoMount;
             }
 
             public class HookSet
@@ -892,12 +930,13 @@ namespace Oxide.Plugins
 
                 Permissions = new PermissionSet
                 {
-                    Spawn = $"{nameof(SpawnHeli)}.{VehicleName}.spawn".ToLower(),
-                    Fetch = $"{nameof(SpawnHeli)}.{VehicleName}.fetch".ToLower(),
-                    Despawn = $"{nameof(SpawnHeli)}.{VehicleName}.despawn".ToLower(),
-                    UnlimitedFuel = $"{nameof(SpawnHeli)}.{VehicleName}.unlimitedfuel".ToLower(),
-                    NoDecay = $"{nameof(SpawnHeli)}.{VehicleName}.nodecay".ToLower(),
-                    NoCooldown = $"{nameof(SpawnHeli)}.{VehicleName}.nocooldown".ToLower(),
+                    Spawn = BuildPermission("spawn"),
+                    Fetch = BuildPermission("fetch"),
+                    Despawn = BuildPermission("despawn"),
+                    UnlimitedFuel = BuildPermission("unlimitedfuel"),
+                    NoDecay = BuildPermission("nodecay"),
+                    NoCooldown = BuildPermission("nocooldown"),
+                    AutoMount = BuildPermission("automount"),
                 };
 
                 plugin.permission.RegisterPermission(Permissions.Spawn, plugin);
@@ -906,6 +945,7 @@ namespace Oxide.Plugins
                 plugin.permission.RegisterPermission(Permissions.UnlimitedFuel, plugin);
                 plugin.permission.RegisterPermission(Permissions.NoDecay, plugin);
                 plugin.permission.RegisterPermission(Permissions.NoCooldown, plugin);
+                plugin.permission.RegisterPermission(Permissions.AutoMount, plugin);
 
                 if (Config.FuelConfig.FuelProfiles != null)
                 {
@@ -944,6 +984,11 @@ namespace Oxide.Plugins
             public void OnServerInitialized()
             {
                 PrefabId = GameManager.server.FindPrefab(PrefabPath)?.GetComponent<BaseEntity>()?.prefabID ?? 0;
+            }
+
+            private string BuildPermission(string permissionSuffix)
+            {
+                return $"{nameof(SpawnHeli)}.{VehicleName}.{permissionSuffix}".ToLower();
             }
         }
 
@@ -1410,6 +1455,16 @@ namespace Oxide.Plugins
         }
 
         [JsonObject(MemberSerialization.OptIn)]
+        private class AutoMountConfig
+        {
+            [JsonProperty("Enabled")]
+            public bool Enabled;
+
+            [JsonProperty("Require permission")]
+            public bool RequirePermission;
+        }
+
+        [JsonObject(MemberSerialization.OptIn)]
         private class VehicleConfig
         {
             [JsonProperty("Spawn commands")]
@@ -1450,6 +1505,9 @@ namespace Oxide.Plugins
 
             [JsonProperty("Fixed spawn distance")]
             public FixedSpawnDistanceConfig FixedSpawnDistanceConfig = new FixedSpawnDistanceConfig();
+
+            [JsonProperty("Auto mount")]
+            public AutoMountConfig AutoMount = new AutoMountConfig();
 
             [JsonProperty("Only owner and team can mount")]
             public bool OnlyOwnerAndTeamCanMount;

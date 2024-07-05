@@ -6,6 +6,7 @@
 - Allows preventing decay damage to personal helicopters
 - Allows spawning personal helicopters with configurable fuel
 - Allows personal helicopters to function without fuel
+- Allows personal helicopters to be auto mounted when spawned or fetched
 - Allows configuring multiple spawn/fetch/despawn commands
 - Allows automatically fetching helicopters, as well as optionally repairing them, when using the spawn command, to simplify the experience for players
 
@@ -83,6 +84,11 @@ Allow the player to spawn their helicopter as often as they would like:
 - `spawnheli.attackhelicopter.nocooldown`
 
 **Caution:** Allowing helicopters to be respawned too frequently could be abused by players to reduce server performance. Alternatively, you can rely on the default cooldown configuration option, and/or grant non-zero cooldowns using permissions (see below).
+
+Allow the player to auto mount their helicopter when spawning or fetching it (requires feature to be enabled in the config, and permissions are only necessary if configured to require permission):
+- `spawnheli.minicopter.automount`
+- `spawnheli.scraptransport.automount`
+- `spawnheli.attackhelicopter.automount`
 
 ### Fuel permissions
 
@@ -229,6 +235,10 @@ Default configuration:
       "Distance from player": 3.0,
       "Helicopter rotation angle": 90.0
     },
+    "Auto mount": {
+      "Enabled": false,
+      "Require permission": false
+    },
     "Only owner and team can mount": false,
     "Spawn health": 750.0,
     "Destroy on disconnect": false,
@@ -308,6 +318,10 @@ Default configuration:
       "Distance from player": 3.0,
       "Helicopter rotation angle": 90.0
     },
+    "Auto mount": {
+      "Enabled": false,
+      "Require permission": false
+    },
     "Only owner and team can mount": false,
     "Spawn health": 1000.0,
     "Destroy on disconnect": false,
@@ -386,6 +400,10 @@ Default configuration:
       "Enabled": true,
       "Distance from player": 3.0,
       "Helicopter rotation angle": 90.0
+    },
+    "Auto mount": {
+      "Enabled": false,
+      "Require permission": false
     },
     "Only owner and team can mount": false,
     "Spawn health": 850.0,
@@ -469,6 +487,9 @@ Each vehicle section (`Minicopter`, `ScrapTransportHelicopter`, and `AttackHelic
   - `Enabled` (`true` or `false`) -- Determines whether fixed spawn distance is enabled.
   - `Distance from player` -- Determines how far away from the player the helicopter will be spawned.
   - `Helicopter rotation angle` -- Determines how the helicopter will be rotated relative to the player when spawned or fetched.
+- `Auto mount` -- When enabled, spawning or fetching a helicopter will automatically mount the owner player to the pilot seat. Note: Giving a player a helicopter using admin/server commands will skip auto mount.
+  - `Enabled` (`true` or `false`) -- Determines whether auto mount is enabled.
+  - `Require permission` (`true` or `false`) -- Determines whether players need permission for the auto mount feature.
 - `Only owner and team can mount` (`true` or `false`) -- Set to `true` to only allow the owner and their team members to be able to mount the helicopter.
 - `Destroy on disconnect` (`true` or `false`) -- Determines whether player helicopters will be despawned when the owner disconnects from the server. Note: If a player is mounted to the helicopter when the owner disconnects, the despawn will be delayed until no more players are mounted to the it.
 - `Fuel` -- Determines how much fuel helicopters will spawn with. Note: Fuel configuration does not apply to players that have the unlimited fuel permission.
