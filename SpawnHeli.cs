@@ -450,6 +450,19 @@ namespace Oxide.Plugins
             }
         }
 
+        private static class NetworkUtils
+        {
+            public static void SendUpdateImmediateRecursive(BaseEntity entity)
+            {
+                entity.SendNetworkUpdateImmediate();
+
+                foreach (var child in entity.children)
+                {
+                    SendUpdateImmediateRecursive(child);
+                }
+            }
+        }
+
         public static void LogWarning(string message) => Interface.Oxide.LogWarning($"[Spawn Heli] {message}");
         public static void LogError(string message) => Interface.Oxide.LogError($"[Spawn Heli] {message}");
 
@@ -707,12 +720,15 @@ namespace Oxide.Plugins
                 heli.SetHealth(Math.Max(heli.Health(), vehicleInfo.Config.SpawnHealth));
             }
 
+            // Terminate on client so it doesn't animate from the previous location, since that can hinder stealth.
+            heli.TerminateOnClient(BaseNetworkable.DestroyMode.None);
+
             heli.rigidBody.velocity = Vector3.zero;
             heli.transform.SetPositionAndRotation(position, rotation);
             heli.rigidBody.WakeUp();
             heli.timeSinceLastPush = 0f;
             heli.UpdateNetworkGroup();
-            heli.SendNetworkUpdateImmediate();
+            NetworkUtils.SendUpdateImmediateRecursive(heli);
 
             if (!permission.UserHasPermission(basePlayer.UserIDString, vehicleInfo.Permissions.NoCooldown))
             {
