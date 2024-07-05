@@ -143,8 +143,7 @@ namespace Oxide.Plugins
             if (heli == null || info == null || heli.OwnerID == 0)
                 return null;
 
-            VehicleInfo vehicleInfo;
-            if (!IsPlayerVehicle(heli, out vehicleInfo))
+            if (!IsPlayerVehicle(heli, out var vehicleInfo))
                 return null;
 
             if (info.damageTypes.Has(Rust.DamageType.Decay)
@@ -159,11 +158,10 @@ namespace Oxide.Plugins
             if (player == null || mountPoint == null)
                 return null;
 
-            VehicleInfo vehicleInfo;
             var heli = mountPoint.GetParentEntity() as PlayerHelicopter;
             if (heli == null
                 || heli.OwnerID == 0
-                || !IsPlayerVehicle(heli, out vehicleInfo)
+                || !IsPlayerVehicle(heli, out var vehicleInfo)
                 || !vehicleInfo.Config.OnlyOwnerAndTeamCanMount)
                 return null;
 
@@ -230,11 +228,10 @@ namespace Oxide.Plugins
             if (seat == null)
                 return;
 
-            VehicleInfo vehicleInfo;
             var heli = seat.GetParentEntity() as PlayerHelicopter;
             if (heli == null
                 || !heli.AnyMounted()
-                || !IsPlayerVehicle(heli, out vehicleInfo)
+                || !IsPlayerVehicle(heli, out var vehicleInfo)
                 || !vehicleInfo.Config.DespawnOnDisconnect)
                 return;
 
@@ -251,9 +248,8 @@ namespace Oxide.Plugins
             if (container == null || !container.IsLocked())
                 return;
 
-            VehicleInfo vehicleInfo;
             var heli = container.GetParentEntity() as PlayerHelicopter;
-            if (heli == null || !IsPlayerVehicle(heli, out vehicleInfo))
+            if (heli == null || !IsPlayerVehicle(heli, out var vehicleInfo))
                 return;
 
             if (!HasPermission(heli.OwnerID.ToString(), vehicleInfo.Permissions.UnlimitedFuel, VehicleInfo.All.UnlimitedFuel))
@@ -285,20 +281,25 @@ namespace Oxide.Plugins
 
         #region Commands
 
-        private void CommandSpawnMinicopter(IPlayer player, string cmd, string[] args) =>
+        private void CommandSpawnMinicopter(IPlayer player, string cmd, string[] args)
+        {
             SpawnCommandInternal(_vehicleInfoManager.Minicopter, player, cmd, args);
+        }
 
-        private void CommandSpawnScrapTransportHelicopter(IPlayer player, string cmd, string[] args) =>
+        private void CommandSpawnScrapTransportHelicopter(IPlayer player, string cmd, string[] args)
+        {
             SpawnCommandInternal(_vehicleInfoManager.ScrapTransportHelicopter, player, cmd, args);
+        }
 
-        private void CommandSpawnAttackHelicopter(IPlayer player, string cmd, string[] args) =>
+        private void CommandSpawnAttackHelicopter(IPlayer player, string cmd, string[] args)
+        {
             SpawnCommandInternal(_vehicleInfoManager.AttackHelicopter, player, cmd, args);
+        }
 
         private void SpawnCommandInternal(VehicleInfo vehicleInfo, IPlayer player, string command, string[] args)
         {
-            BasePlayer basePlayer;
             if (vehicleInfo == null
-                || !VerifyPlayer(player, out basePlayer)
+                || !VerifyPlayer(player, out var basePlayer)
                 || !VerifyPermission(player, vehicleInfo.Permissions.Spawn, VehicleInfo.All.Spawn))
                 return;
 
@@ -338,12 +339,10 @@ namespace Oxide.Plugins
                 }
             }
 
-            Vector3 position;
-            Quaternion rotation;
             if (!VerifyOffCooldown(vehicleInfo, basePlayer, vehicleInfo.Config.SpawnCooldowns, vehicleInfo.Data.SpawnCooldowns)
                 || !vehicleInfo.Config.CanSpawnBuildingBlocked && !VerifyNotBuildingBlocked(player, basePlayer)
                 || SpawnWasBlocked(vehicleInfo, basePlayer)
-                || !VerifyValidSpawnOrFetchPosition(vehicleInfo, basePlayer, out position, out rotation))
+                || !VerifyValidSpawnOrFetchPosition(vehicleInfo, basePlayer, out var position, out var rotation))
                 return;
 
             heli = SpawnVehicle(vehicleInfo, basePlayer, position, rotation);
@@ -356,45 +355,53 @@ namespace Oxide.Plugins
             }
         }
 
-        private void CommandFetchMinicopter(IPlayer player, string cmd, string[] args) =>
+        private void CommandFetchMinicopter(IPlayer player, string cmd, string[] args)
+        {
             FetchCommandInternal(_vehicleInfoManager.Minicopter, player, cmd, args);
+        }
 
-        private void CommandFetchScrapTransportHelicopter(IPlayer player, string cmd, string[] args) =>
+        private void CommandFetchScrapTransportHelicopter(IPlayer player, string cmd, string[] args)
+        {
             FetchCommandInternal(_vehicleInfoManager.ScrapTransportHelicopter, player, cmd, args);
+        }
 
-        private void CommandFetchAttackHelicopter(IPlayer player, string cmd, string[] args) =>
+        private void CommandFetchAttackHelicopter(IPlayer player, string cmd, string[] args)
+        {
             FetchCommandInternal(_vehicleInfoManager.AttackHelicopter, player, cmd, args);
+        }
 
         private void FetchCommandInternal(VehicleInfo vehicleInfo, IPlayer player, string command, string[] args)
         {
-            BasePlayer basePlayer;
-            PlayerHelicopter heli;
             if (vehicleInfo == null
-                || !VerifyPlayer(player, out basePlayer)
+                || !VerifyPlayer(player, out var basePlayer)
                 || !VerifyPermission(player, vehicleInfo.Permissions.Fetch, VehicleInfo.All.Fetch)
-                || !VerifyVehicleExists(player, basePlayer, vehicleInfo, out heli))
+                || !VerifyVehicleExists(player, basePlayer, vehicleInfo, out var heli))
                 return;
 
             FetchVehicle(vehicleInfo, player, basePlayer, heli);
         }
 
-        private void CommandDespawnMinicopter(IPlayer player, string cmd, string[] args) =>
+        private void CommandDespawnMinicopter(IPlayer player, string cmd, string[] args)
+        {
             DespawnCommandInternal(_vehicleInfoManager.Minicopter, player, cmd, args);
+        }
 
-        private void CommandDespawnScrapTransportHelicopter(IPlayer player, string cmd, string[] args) =>
+        private void CommandDespawnScrapTransportHelicopter(IPlayer player, string cmd, string[] args)
+        {
             DespawnCommandInternal(_vehicleInfoManager.ScrapTransportHelicopter, player, cmd, args);
+        }
 
-        private void CommandDespawnAttackHelicopter(IPlayer player, string cmd, string[] args) =>
+        private void CommandDespawnAttackHelicopter(IPlayer player, string cmd, string[] args)
+        {
             DespawnCommandInternal(_vehicleInfoManager.AttackHelicopter, player, cmd, args);
+        }
 
         private void DespawnCommandInternal(VehicleInfo vehicleInfo, IPlayer player, string command, string[] args)
         {
-            BasePlayer basePlayer;
-            PlayerHelicopter heli;
             if (vehicleInfo == null
-                || !VerifyPlayer(player, out basePlayer)
+                || !VerifyPlayer(player, out var basePlayer)
                 || !VerifyPermission(player, vehicleInfo.Permissions.Despawn, VehicleInfo.All.Despawn)
-                || !VerifyVehicleExists(player, basePlayer, vehicleInfo, out heli))
+                || !VerifyVehicleExists(player, basePlayer, vehicleInfo, out var heli))
                 return;
 
             if (!vehicleInfo.Config.CanDespawnWhileOccupied && IsHeliOccupied(heli))
@@ -412,14 +419,20 @@ namespace Oxide.Plugins
 
         // Old command for backwards compatibility.
         [Command("spawnmini.give")]
-        private void CommandGiveMinicopter(IPlayer player, string cmd, string[] args) =>
+        private void CommandGiveMinicopter(IPlayer player, string cmd, string[] args)
+        {
             GiveCommandInternal(_vehicleInfoManager.Minicopter, player, cmd, args);
+        }
 
-        private void CommandGiveScrapTransportHelicopter(IPlayer player, string cmd, string[] args) =>
+        private void CommandGiveScrapTransportHelicopter(IPlayer player, string cmd, string[] args)
+        {
             GiveCommandInternal(_vehicleInfoManager.ScrapTransportHelicopter, player, cmd, args);
+        }
 
-        private void CommandGiveAttackHelicopter(IPlayer player, string cmd, string[] args) =>
+        private void CommandGiveAttackHelicopter(IPlayer player, string cmd, string[] args)
+        {
             GiveCommandInternal(_vehicleInfoManager.AttackHelicopter, player, cmd, args);
+        }
 
         private void GiveCommandInternal(VehicleInfo vehicleInfo, IPlayer player, string cmd, string[] args)
         {
@@ -441,11 +454,10 @@ namespace Oxide.Plugins
 
             if (args.Length > 1)
             {
-                float x, y, z;
                 if (args.Length < 4 ||
-                    !float.TryParse(args[1], out x) ||
-                    !float.TryParse(args[2], out y) ||
-                    !float.TryParse(args[3], out z))
+                    !float.TryParse(args[1], out var x) ||
+                    !float.TryParse(args[2], out var y) ||
+                    !float.TryParse(args[3], out var z))
                 {
                     Puts($"Syntax: {cmd} <name or steamid> <x> <y> <z>");
                     return;
@@ -466,7 +478,7 @@ namespace Oxide.Plugins
         {
             public static string StripPrefix(string subject, string prefix)
             {
-                return subject.StartsWith(prefix) ? subject.Substring(prefix.Length) : subject;
+                return subject.StartsWith(prefix) ? subject[prefix.Length..] : subject;
             }
 
             public static string StripPrefixes(string subject, params string[] prefixes)
@@ -576,8 +588,7 @@ namespace Oxide.Plugins
             }
             else
             {
-                RaycastHit hit;
-                if (!Physics.Raycast(player.eyes.HeadRay(), out hit, Mathf.Infinity, SpawnPointLayerMask))
+                if (!Physics.Raycast(player.eyes.HeadRay(), out var hit, Mathf.Infinity, SpawnPointLayerMask))
                 {
                     player.ChatMessage(GetMessage(player.UserIDString, LangEntry.ErrorNoSpawnLocationFound));
                     return false;
@@ -607,8 +618,7 @@ namespace Oxide.Plugins
 
         private bool VerifyOffCooldown(VehicleInfo vehicleInfo, BasePlayer player, CooldownConfig cooldownConfig, Dictionary<string, DateTime> cooldownMap)
         {
-            DateTime cooldownStart;
-            if (!cooldownMap.TryGetValue(player.UserIDString, out cooldownStart)
+            if (!cooldownMap.TryGetValue(player.UserIDString, out var cooldownStart)
                 || HasPermission(player.UserIDString, vehicleInfo.Permissions.NoCooldown))
                 return true;
 
@@ -634,20 +644,17 @@ namespace Oxide.Plugins
 
         private static bool SpawnWasBlocked(VehicleInfo vehicleInfo, BasePlayer player)
         {
-            var hookResult = Interface.CallHook(vehicleInfo.Hooks.Spawn, player);
-            return hookResult is bool && !(bool)hookResult;
+            return Interface.CallHook(vehicleInfo.Hooks.Spawn, player) is false;
         }
 
         private static bool FetchWasBlocked(VehicleInfo vehicleInfo, BasePlayer player, PlayerHelicopter heli)
         {
-            var hookResult = Interface.CallHook(vehicleInfo.Hooks.Fetch, player, heli);
-            return hookResult is bool && !(bool)hookResult;
+            return Interface.CallHook(vehicleInfo.Hooks.Fetch, player, heli) is false;
         }
 
         private static bool DespawnWasBlocked(VehicleInfo vehicleInfo, BasePlayer player, PlayerHelicopter heli)
         {
-            var hookResult = Interface.CallHook(vehicleInfo.Hooks.Despawn, player, heli);
-            return hookResult is bool && !(bool)hookResult;
+            return Interface.CallHook(vehicleInfo.Hooks.Despawn, player, heli) is false;
         }
 
         private static TimeSpan CeilingTimeSpan(TimeSpan timeSpan)
@@ -727,8 +734,7 @@ namespace Oxide.Plugins
 
         private PlayerHelicopter FindPlayerVehicle(VehicleInfo vehicleInfo, BasePlayer player)
         {
-            ulong heliNetId;
-            if (!vehicleInfo.Data.Vehicles.TryGetValue(player.UserIDString, out heliNetId))
+            if (!vehicleInfo.Data.Vehicles.TryGetValue(player.UserIDString, out var heliNetId))
                 return null;
 
             var heli = BaseNetworkable.serverEntities.Find(new NetworkableId(heliNetId)) as PlayerHelicopter;
@@ -769,13 +775,11 @@ namespace Oxide.Plugins
                 return;
             }
 
-            Vector3 position;
-            Quaternion rotation;
             if (!VerifyVehicleWithinDistance(player, basePlayer, heli, vehicleInfo.Config.MaxFetchDistance)
                 || !VerifyOffCooldown(vehicleInfo, basePlayer, vehicleInfo.Config.FetchCooldowns, vehicleInfo.Data.FetchCooldowns)
                 || !vehicleInfo.Config.CanFetchBuildingBlocked && !VerifyNotBuildingBlocked(player, basePlayer)
                 || FetchWasBlocked(vehicleInfo, basePlayer, heli)
-                || !VerifyValidSpawnOrFetchPosition(vehicleInfo, basePlayer, out position, out rotation))
+                || !VerifyValidSpawnOrFetchPosition(vehicleInfo, basePlayer, out var position, out var rotation))
                 return;
 
             if (isOccupied)
@@ -1063,7 +1067,7 @@ namespace Oxide.Plugins
             public VehicleInfo[] AllVehicles { get; private set; }
 
             private readonly SpawnHeli _plugin;
-            private readonly Dictionary<uint, VehicleInfo> _prefabIdToVehicleInfo = new Dictionary<uint, VehicleInfo>();
+            private readonly Dictionary<uint, VehicleInfo> _prefabIdToVehicleInfo = new();
 
             public bool AnyOwnerOnly => AllVehicles.Any(vehicleInfo => vehicleInfo.Config.OnlyOwnerAndTeamCanMount);
             public bool AnyDespawnOnDisconnect => AllVehicles.Any(vehicleInfo => vehicleInfo.Config.DespawnOnDisconnect);
@@ -1195,8 +1199,7 @@ namespace Oxide.Plugins
 
             public VehicleInfo GetVehicleInfo(BaseEntity entity)
             {
-                VehicleInfo vehicleInfo;
-                return _prefabIdToVehicleInfo.TryGetValue(entity.prefabID, out vehicleInfo)
+                return _prefabIdToVehicleInfo.TryGetValue(entity.prefabID, out var vehicleInfo)
                     ? vehicleInfo
                     : null;
             }
@@ -1219,19 +1222,19 @@ namespace Oxide.Plugins
             }
 
             [JsonProperty("playerMini")]
-            public Dictionary<string, ulong> playerMini = new Dictionary<string, ulong>();
+            public Dictionary<string, ulong> playerMini = new();
 
             [JsonProperty("spawnCooldowns")]
-            public Dictionary<string, DateTime> spawnCooldowns = new Dictionary<string, DateTime>();
+            public Dictionary<string, DateTime> spawnCooldowns = new();
 
             [JsonProperty("cooldown")]
             private Dictionary<string, DateTime> deprecatedCooldown
             {
-                set { spawnCooldowns = value; }
+                set => spawnCooldowns = value;
             }
 
             [JsonProperty("fetchCooldowns")]
-            public Dictionary<string, DateTime> fetchCooldowns = new Dictionary<string, DateTime>();
+            public Dictionary<string, DateTime> fetchCooldowns = new();
 
             public void Delete()
             {
@@ -1243,18 +1246,17 @@ namespace Oxide.Plugins
         private class VehicleData
         {
             [JsonProperty("Vehicles")]
-            public Dictionary<string, ulong> Vehicles = new Dictionary<string, ulong>();
+            public Dictionary<string, ulong> Vehicles = new();
 
             [JsonProperty("SpawnCooldowns")]
-            public Dictionary<string, DateTime> SpawnCooldowns = new Dictionary<string, DateTime>();
+            public Dictionary<string, DateTime> SpawnCooldowns = new();
 
             [JsonProperty("FetchCooldowns")]
-            public Dictionary<string, DateTime> FetchCooldowns = new Dictionary<string, DateTime>();
+            public Dictionary<string, DateTime> FetchCooldowns = new();
 
             public PlayerHelicopter GetVehicle(string playerId)
             {
-                ulong netId;
-                return Vehicles.TryGetValue(playerId, out netId)
+                return Vehicles.TryGetValue(playerId, out var netId)
                     ? BaseNetworkable.serverEntities.Find(new NetworkableId(netId)) as PlayerHelicopter
                     : null;
             }
@@ -1342,13 +1344,13 @@ namespace Oxide.Plugins
             private bool _dirty;
 
             [JsonProperty("Minicopter")]
-            public VehicleData Minicopter = new VehicleData();
+            public VehicleData Minicopter = new();
 
             [JsonProperty("ScrapTransportHelicopter")]
-            public VehicleData ScrapTransportHelicopter = new VehicleData();
+            public VehicleData ScrapTransportHelicopter = new();
 
             [JsonProperty("AttackHelicopter")]
-            public VehicleData AttackHelicopter = new VehicleData();
+            public VehicleData AttackHelicopter = new();
 
             public void Clean()
             {
@@ -1451,9 +1453,9 @@ namespace Oxide.Plugins
             [JsonProperty("Fuel profiles requiring permission")]
             public FuelProfile[] FuelProfiles =
             {
-                new FuelProfile("100", 100),
-                new FuelProfile("500", 500),
-                new FuelProfile("1000", 1000),
+                new("100", 100),
+                new("500", 500),
+                new("1000", 1000),
             };
 
             public void Init(string vehicleName)
@@ -1578,13 +1580,13 @@ namespace Oxide.Plugins
             public float MaxDespawnDistance = -1;
 
             [JsonProperty("Fixed spawn distance")]
-            public FixedSpawnDistanceConfig FixedSpawnDistanceConfig = new FixedSpawnDistanceConfig();
+            public FixedSpawnDistanceConfig FixedSpawnDistanceConfig = new();
 
             [JsonProperty("Auto mount")]
-            public AutoMountConfig AutoMount = new AutoMountConfig();
+            public AutoMountConfig AutoMount = new();
 
             [JsonProperty("Instant takeoff")]
-            public InstantTakeoffConfig InstantTakeoff = new InstantTakeoffConfig();
+            public InstantTakeoffConfig InstantTakeoff = new();
 
             [JsonProperty("Only owner and team can mount")]
             public bool OnlyOwnerAndTeamCanMount;
@@ -1596,10 +1598,10 @@ namespace Oxide.Plugins
             public bool DespawnOnDisconnect;
 
             [JsonProperty("Fuel")]
-            public FuelConfig FuelConfig = new FuelConfig();
+            public FuelConfig FuelConfig = new();
 
             [JsonProperty("Spawn cooldowns")]
-            public CooldownConfig SpawnCooldowns = new CooldownConfig
+            public CooldownConfig SpawnCooldowns = new()
             {
                 DefaultCooldown = 3600f,
                 CooldownProfiles = new[]
@@ -1611,7 +1613,7 @@ namespace Oxide.Plugins
             };
 
             [JsonProperty("Fetch cooldowns")]
-            public CooldownConfig FetchCooldowns = new CooldownConfig
+            public CooldownConfig FetchCooldowns = new()
             {
                 DefaultCooldown = 10f,
                 CooldownProfiles = new[]
@@ -1640,7 +1642,7 @@ namespace Oxide.Plugins
             public bool AutoDespawnOtherHelicopterTypes;
 
             [JsonProperty("Minicopter")]
-            public VehicleConfig Minicopter = new VehicleConfig
+            public VehicleConfig Minicopter = new()
             {
                 SpawnCommands = new[] { "mymini" },
                 FetchCommands = new[] { "fmini" },
@@ -1649,7 +1651,7 @@ namespace Oxide.Plugins
             };
 
             [JsonProperty("ScrapTransportHelicopter")]
-            public VehicleConfig ScrapTransportHelicopter = new VehicleConfig
+            public VehicleConfig ScrapTransportHelicopter = new()
             {
                 SpawnCommands = new[] { "myheli" },
                 FetchCommands = new[] { "fheli" },
@@ -1658,7 +1660,7 @@ namespace Oxide.Plugins
             };
 
             [JsonProperty("AttackHelicopter")]
-            public VehicleConfig AttackHelicopter = new VehicleConfig
+            public VehicleConfig AttackHelicopter = new()
             {
                 SpawnCommands = new[] { "myattack" },
                 FetchCommands = new[] { "fattack" },
@@ -1893,7 +1895,7 @@ namespace Oxide.Plugins
             }
         }
 
-        private Configuration GetDefaultConfig() => new Configuration();
+        private Configuration GetDefaultConfig() => new();
 
         #region Configuration Helpers
 
@@ -1939,13 +1941,10 @@ namespace Oxide.Plugins
 
             foreach (var key in currentWithDefaults.Keys)
             {
-                object currentRawValue;
-                if (currentRaw.TryGetValue(key, out currentRawValue))
+                if (currentRaw.TryGetValue(key, out var currentRawValue))
                 {
-                    var defaultDictValue = currentWithDefaults[key] as Dictionary<string, object>;
                     var currentDictValue = currentRawValue as Dictionary<string, object>;
-
-                    if (defaultDictValue != null)
+                    if (currentWithDefaults[key] is Dictionary<string, object> defaultDictValue)
                     {
                         // Don't update nested keys since the cooldown tiers might be customized
                         if (currentDictValue == null)
@@ -2009,89 +2008,89 @@ namespace Oxide.Plugins
                 en,
             }
 
-            public static readonly List<LangEntry> AllLangEntries = new List<LangEntry>();
+            public static readonly List<LangEntry> AllLangEntries = new();
 
-            public static readonly LangEntry ErrorNoPermission = new LangEntry("error_no_permission", new Dictionary<Lang, string>
+            public static readonly LangEntry ErrorNoPermission = new("error_no_permission", new Dictionary<Lang, string>
             {
                 [Lang.en] = "You do not have permission to use this command.",
             });
-            public static readonly LangEntry ErrorBuildingBlocked = new LangEntry("error_building_blocked", new Dictionary<Lang, string>
+            public static readonly LangEntry ErrorBuildingBlocked = new("error_building_blocked", new Dictionary<Lang, string>
             {
                 [Lang.en] = "Cannot do that while building blocked.",
             });
-            public static readonly LangEntry ErrorOnCooldown = new LangEntry("error_on_cooldown", new Dictionary<Lang, string>
+            public static readonly LangEntry ErrorOnCooldown = new("error_on_cooldown", new Dictionary<Lang, string>
             {
                 [Lang.en] = "You have <color=red>{0}</color> until your cooldown ends.",
             });
-            public static readonly LangEntry InsufficientSpace = new LangEntry("error_insufficient_space", new Dictionary<Lang, string>
+            public static readonly LangEntry InsufficientSpace = new("error_insufficient_space", new Dictionary<Lang, string>
             {
                 [Lang.en] = "Not enough space.",
             });
-            public static readonly LangEntry ErrorConflictingHeli = new LangEntry("error_conflicting_heli", new Dictionary<Lang, string>
+            public static readonly LangEntry ErrorConflictingHeli = new("error_conflicting_heli", new Dictionary<Lang, string>
             {
                 [Lang.en] = "You must first destroy your other helicopter(s) before you can spawn a new one.",
             });
 
-            public static readonly LangEntry ErrorSpawnDistance = new LangEntry("error_spawn_distance", new Dictionary<Lang, string>
+            public static readonly LangEntry ErrorSpawnDistance = new("error_spawn_distance", new Dictionary<Lang, string>
             {
                 [Lang.en] = "You cannot spawn the helicopter that far away.",
             });
-            public static readonly LangEntry ErrorNoSpawnLocationFound = new LangEntry("error_spawn_location", new Dictionary<Lang, string>
+            public static readonly LangEntry ErrorNoSpawnLocationFound = new("error_spawn_location", new Dictionary<Lang, string>
             {
                 [Lang.en] = "No suitable spawn location found.",
             });
-            public static readonly LangEntry ErrorHeliOccupied = new LangEntry("error_heli_occupied", new Dictionary<Lang, string>
+            public static readonly LangEntry ErrorHeliOccupied = new("error_heli_occupied", new Dictionary<Lang, string>
             {
                 [Lang.en] = "The helicopter is currently occupied.",
             });
-            public static readonly LangEntry ErrorHeliDistance = new LangEntry("error_heli_distance", new Dictionary<Lang, string>
+            public static readonly LangEntry ErrorHeliDistance = new("error_heli_distance", new Dictionary<Lang, string>
             {
                 [Lang.en] = "The helicopter is too far away.",
             });
-            public static readonly LangEntry ErrorCannotMount = new LangEntry("error_cannot_mount", new Dictionary<Lang, string>
+            public static readonly LangEntry ErrorCannotMount = new("error_cannot_mount", new Dictionary<Lang, string>
             {
                 [Lang.en] = "You are not the owner of this helicopter or in the owner's team.",
             });
-            public static readonly LangEntry ErrorUnlimitedFuel = new LangEntry("error_unlimited_fuel", new Dictionary<Lang, string>
+            public static readonly LangEntry ErrorUnlimitedFuel = new("error_unlimited_fuel", new Dictionary<Lang, string>
             {
                 [Lang.en] = "That helicopter doesn't need fuel.",
             });
 
-            public static readonly LangEntry MiniDestroyed = new LangEntry("info_mini_destroyed", new Dictionary<Lang, string>
+            public static readonly LangEntry MiniDestroyed = new("info_mini_destroyed", new Dictionary<Lang, string>
             {
                 [Lang.en] = "Your Minicopter has been destroyed.",
             });
-            public static readonly LangEntry ScrapHeliDestroyed = new LangEntry("info_scrap_heli_destroyed", new Dictionary<Lang, string>
+            public static readonly LangEntry ScrapHeliDestroyed = new("info_scrap_heli_destroyed", new Dictionary<Lang, string>
             {
                 [Lang.en] = "Your Scrap Heli has been destroyed.",
             });
-            public static readonly LangEntry AttackHeliDestroyed = new LangEntry("info_attack_heli_destroyed", new Dictionary<Lang, string>
+            public static readonly LangEntry AttackHeliDestroyed = new("info_attack_heli_destroyed", new Dictionary<Lang, string>
             {
                 [Lang.en] = "Your Attack Heli has been destroyed.",
             });
 
-            public static readonly LangEntry ErrorMiniExists = new LangEntry("error_mini_exists", new Dictionary<Lang, string>
+            public static readonly LangEntry ErrorMiniExists = new("error_mini_exists", new Dictionary<Lang, string>
             {
                 [Lang.en] = "You already have a Minicopter.",
             });
-            public static readonly LangEntry ErrorScrapHeliExist = new LangEntry("error_scrap_heli_exists", new Dictionary<Lang, string>
+            public static readonly LangEntry ErrorScrapHeliExist = new("error_scrap_heli_exists", new Dictionary<Lang, string>
             {
                 [Lang.en] = "You already have a Scrap Heli.",
             });
-            public static readonly LangEntry ErrorAttackHeliExists = new LangEntry("error_attack_heli_exists", new Dictionary<Lang, string>
+            public static readonly LangEntry ErrorAttackHeliExists = new("error_attack_heli_exists", new Dictionary<Lang, string>
             {
                 [Lang.en] = "You already have an Attack Heli.",
             });
 
-            public static readonly LangEntry ErrorMiniNotFound = new LangEntry("error_mini_not_found", new Dictionary<Lang, string>
+            public static readonly LangEntry ErrorMiniNotFound = new("error_mini_not_found", new Dictionary<Lang, string>
             {
                 [Lang.en] = "You do not have a Minicopter.",
             });
-            public static readonly LangEntry ErrorScrapHeliNotFound = new LangEntry("error_scrap_heli_not_found", new Dictionary<Lang, string>
+            public static readonly LangEntry ErrorScrapHeliNotFound = new("error_scrap_heli_not_found", new Dictionary<Lang, string>
             {
                 [Lang.en] = "You do not have a Scrap Heli.",
             });
-            public static readonly LangEntry ErrorAttackHeliNotFound = new LangEntry("error_attack_heli_not_found", new Dictionary<Lang, string>
+            public static readonly LangEntry ErrorAttackHeliNotFound = new("error_attack_heli_not_found", new Dictionary<Lang, string>
             {
                 [Lang.en] = "You do not have an Attack Heli.",
             });
@@ -2108,11 +2107,15 @@ namespace Oxide.Plugins
             }
         }
 
-        private string GetMessage(string playerId, LangEntry langEntry) =>
-            lang.GetMessage(langEntry.Name, this, playerId);
+        private string GetMessage(string playerId, LangEntry langEntry)
+        {
+            return lang.GetMessage(langEntry.Name, this, playerId);
+        }
 
-        private string GetMessage(string playerId, LangEntry langEntry, object arg1) =>
-            string.Format(GetMessage(playerId, langEntry), arg1);
+        private string GetMessage(string playerId, LangEntry langEntry, object arg1)
+        {
+            return string.Format(GetMessage(playerId, langEntry), arg1);
+        }
 
         protected override void LoadDefaultMessages()
         {
@@ -2123,8 +2126,7 @@ namespace Oxide.Plugins
                 foreach (var phraseEntry in langEntry.PhrasesByLanguage)
                 {
                     var langName = phraseEntry.Key.ToString();
-                    Dictionary<string, string> langKeys;
-                    if (!langKeysByLanguage.TryGetValue(langName, out langKeys))
+                    if (!langKeysByLanguage.TryGetValue(langName, out var langKeys))
                     {
                         langKeys = new Dictionary<string, string>();
                         langKeysByLanguage[langName] = langKeys;
