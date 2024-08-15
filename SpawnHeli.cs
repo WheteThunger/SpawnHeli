@@ -505,6 +505,60 @@ namespace Oxide.Plugins
             }
         }
 
+        private static class Ddraw
+        {
+            public static void Sphere(BasePlayer player, Vector3 origin, float radius, Color color, float duration) =>
+                player.SendConsoleCommand("ddraw.sphere", duration, color, origin, radius);
+
+            public static void Line(BasePlayer player, Vector3 origin, Vector3 target, Color color, float duration) =>
+                player.SendConsoleCommand("ddraw.line", duration, color, origin, target);
+
+            public static void Box(BasePlayer player, Vector3 center, Quaternion rotation, Vector3 extents, Color color, float duration)
+            {
+                var sphereRadius = 0.1f;
+
+                var forwardUpperLeft = center + rotation * extents.WithX(-extents.x);
+                var forwardUpperRight = center + rotation * extents;
+                var forwardLowerLeft = center + rotation * extents.WithX(-extents.x).WithY(-extents.y);
+                var forwardLowerRight = center + rotation * extents.WithY(-extents.y);
+
+                var backLowerRight = center + rotation * -extents.WithX(-extents.x);
+                var backLowerLeft = center + rotation * -extents;
+                var backUpperRight = center + rotation * -extents.WithX(-extents.x).WithY(-extents.y);
+                var backUpperLeft = center + rotation * -extents.WithY(-extents.y);
+
+                Sphere(player, forwardUpperLeft, sphereRadius, color, duration);
+                Sphere(player, forwardUpperRight, sphereRadius, color, duration);
+                Sphere(player, forwardLowerLeft, sphereRadius, color, duration);
+                Sphere(player, forwardLowerRight, sphereRadius, color, duration);
+
+                Sphere(player, backLowerRight, sphereRadius, color, duration);
+                Sphere(player, backLowerLeft, sphereRadius, color, duration);
+                Sphere(player, backUpperRight, sphereRadius, color, duration);
+                Sphere(player, backUpperLeft, sphereRadius, color, duration);
+
+                Line(player, forwardUpperLeft, forwardUpperRight, color, duration);
+                Line(player, forwardLowerLeft, forwardLowerRight, color, duration);
+                Line(player, forwardUpperLeft, forwardLowerLeft, color, duration);
+                Line(player, forwardUpperRight, forwardLowerRight, color, duration);
+
+                Line(player, backUpperLeft, backUpperRight, color, duration);
+                Line(player, backLowerLeft, backLowerRight, color, duration);
+                Line(player, backUpperLeft, backLowerLeft, color, duration);
+                Line(player, backUpperRight, backLowerRight, color, duration);
+
+                Line(player, forwardUpperLeft, backUpperLeft, color, duration);
+                Line(player, forwardLowerLeft, backLowerLeft, color, duration);
+                Line(player, forwardUpperRight, backUpperRight, color, duration);
+                Line(player, forwardLowerRight, backLowerRight, color, duration);
+            }
+
+            public static void Box(BasePlayer player, OBB obb, Color color, float duration)
+            {
+                Box(player, obb.position, obb.rotation, obb.extents, color, duration);
+            }
+        }
+
         public static void LogWarning(string message) => Interface.Oxide.LogWarning($"[Spawn Heli] {message}");
         public static void LogError(string message) => Interface.Oxide.LogError($"[Spawn Heli] {message}");
 
@@ -576,7 +630,30 @@ namespace Oxide.Plugins
             return false;
         }
 
-        private bool VerifyValidSpawnOrFetchPosition(VehicleInfo vehicleInfo, BasePlayer player, out Vector3 position, out Quaternion rotation)
+        private static bool CheckBox(OBB obb, int layerMask, BaseEntity ignoreEntity = null)
+        {
+            if (ignoreEntity == null)
+                return Physics.CheckBox(obb.position, obb.extents, obb.rotation, layerMask, QueryTriggerInteraction.Ignore);
+
+            var colliderList = Pool.GetList<Collider>();
+            Vis.Colliders(obb, colliderList, layerMask, QueryTriggerInteraction.Ignore);
+            var hitSomething = false;
+
+            foreach (var collider in colliderList)
+            {
+                var hitEntity = collider.ToBaseEntity();
+                if (hitEntity == ignoreEntity || hitEntity.GetParentEntity() == ignoreEntity)
+                    continue;
+
+                hitSomething = true;
+                break;
+            }
+
+            Pool.FreeList(ref colliderList);
+            return hitSomething;
+        }
+
+        private bool VerifyValidSpawnOrFetchPosition(VehicleInfo vehicleInfo, BasePlayer player, out Vector3 position, out Quaternion rotation, PlayerHelicopter existingHeli = null)
         {
             position = Vector3.zero;
             rotation = Quaternion.identity;
@@ -603,11 +680,31 @@ namespace Oxide.Plugins
                 position = hit.point + Vector3.up * VerticalSpawnOffset;
             }
 
-            var extents = vehicleInfo.Bounds.extents;
-            var boundsCenter = position + rotation * vehicleInfo.Bounds.center;
+            var mainExtents = vehicleInfo.Bounds.extents;
+            var mainCenter = position + rotation * vehicleInfo.Bounds.center;
+            var mainObb = new OBB(mainCenter, 2 * mainExtents, rotation);
 
-            if (Physics.CheckBox(boundsCenter, extents, rotation, SpaceCheckLayerMask, QueryTriggerInteraction.Ignore)
-                || Physics.CheckBox(position + Vector3.down * VerticalSpawnOffset / 2f, extents.WithY(VerticalSpawnOffset / 2f), rotation, Rust.Layers.Mask.Player_Server, QueryTriggerInteraction.Ignore))
+            var playerObb = new OBB(
+                mainCenter - new Vector3(0, mainExtents.y + VerticalSpawnOffset / 2f, 0),
+                2 * mainExtents.WithY(VerticalSpawnOffset / 2f),
+                rotation
+            );
+
+            var tailCenter = mainCenter + rotation * new Vector3(0, 0, -mainExtents.z - vehicleInfo.TailLength / 2);
+            tailCenter.y = position.y + vehicleInfo.TailYOffset;
+            var tailExtents = new Vector3(vehicleInfo.TailThickness, vehicleInfo.TailThickness, vehicleInfo.TailLength / 2);
+            var tailObb = new OBB(tailCenter, 2 * tailExtents, rotation);
+
+            if (_config.AdminDebugBounds && player.IsAdmin)
+            {
+                Ddraw.Box(player, mainObb, Color.magenta, 5f);
+                Ddraw.Box(player, tailObb, Color.magenta, 5f);
+                Ddraw.Box(player, playerObb, Color.cyan, 5f);
+            }
+
+            if (CheckBox(mainObb, SpaceCheckLayerMask, existingHeli)
+                || CheckBox(tailObb, SpaceCheckLayerMask, existingHeli)
+                || CheckBox(playerObb, Rust.Layers.Mask.Player_Server, player))
             {
                 player.ChatMessage(GetMessage(player.UserIDString, LangEntry.InsufficientSpace));
                 return false;
@@ -664,14 +761,14 @@ namespace Oxide.Plugins
 
         private static Vector3 GetFixedPositionForPlayer(VehicleInfo vehicleInfo, BasePlayer player)
         {
-            var forward = player.GetNetworkRotation() * Vector3.forward;
+            var forward = player.eyes.BodyForward();
             forward.y = 0;
             return player.transform.position + forward.normalized * vehicleInfo.Config.FixedSpawnDistanceConfig.Distance + Vector3.up * VerticalSpawnOffset;
         }
 
         private static Quaternion GetFixedRotationForPlayer(VehicleInfo vehicleInfo, BasePlayer player)
         {
-            return Quaternion.Euler(0, player.GetNetworkRotation().eulerAngles.y - vehicleInfo.Config.FixedSpawnDistanceConfig.RotationAngle, 0);
+            return Quaternion.Euler(0, player.eyes.rotation.eulerAngles.y - vehicleInfo.Config.FixedSpawnDistanceConfig.RotationAngle, 0);
         }
 
         private static void EnableUnlimitedFuel(PlayerHelicopter heli)
@@ -779,7 +876,7 @@ namespace Oxide.Plugins
                 || !VerifyOffCooldown(vehicleInfo, basePlayer, vehicleInfo.Config.FetchCooldowns, vehicleInfo.Data.FetchCooldowns)
                 || !vehicleInfo.Config.CanFetchBuildingBlocked && !VerifyNotBuildingBlocked(player, basePlayer)
                 || FetchWasBlocked(vehicleInfo, basePlayer, heli)
-                || !VerifyValidSpawnOrFetchPosition(vehicleInfo, basePlayer, out var position, out var rotation))
+                || !VerifyValidSpawnOrFetchPosition(vehicleInfo, basePlayer, out var position, out var rotation, heli))
                 return;
 
             if (isOccupied)
@@ -1001,6 +1098,9 @@ namespace Oxide.Plugins
             public string VehicleName { private get; set; }
             public string PrefabPath;
             public Bounds Bounds;
+            public float TailLength;
+            public float TailThickness;
+            public float TailYOffset;
             public string GiveCommand  { get; private set; }
             public VehicleConfig Config;
             public VehicleData Data;
@@ -1105,9 +1205,12 @@ namespace Oxide.Plugins
                         },
                         Bounds = new Bounds
                         {
-                            center = new Vector3(-0.001f, 1.114f, -0.36f),
-                            extents = new Vector3(1.32f, 0.87f, 2.16f),
+                            center = new Vector3(0f, 1.11f, 0.5f),
+                            extents = new Vector3(1.3f, 0.85f, 1.7f),
                         },
+                        TailLength = 1.5f,
+                        TailThickness = 0.35f,
+                        TailYOffset = 1f,
                     },
                     ScrapTransportHelicopter = new VehicleInfo
                     {
@@ -1129,9 +1232,12 @@ namespace Oxide.Plugins
                         },
                         Bounds = new Bounds
                         {
-                            center = new Vector3(0, 2.25f, -1.25f),
-                            extents = new Vector3(2.2f, 2.25f, 6f),
+                            center = new Vector3(0, 2.25f, 0.65f),
+                            extents = new Vector3(2.2f, 2.25f, 4f),
                         },
+                        TailLength = 4.7f,
+                        TailThickness = 0.5f,
+                        TailYOffset = 2.9f,
                     },
                     AttackHelicopter = new VehicleInfo
                     {
@@ -1153,9 +1259,12 @@ namespace Oxide.Plugins
                         },
                         Bounds = new Bounds
                         {
-                            center = new Vector3(0, 1.678f, -1.676f),
-                            extents = new Vector3(1.303f, 1.678f, 5.495f),
+                            center = new Vector3(0, 1.65f, 0f),
+                            extents = new Vector3(1.3f, 1.65f, 1.9f),
                         },
+                        TailLength = 4.8f,
+                        TailThickness = 0.6f,
+                        TailYOffset = 1.9f,
                     },
                 };
 
@@ -1635,6 +1744,9 @@ namespace Oxide.Plugins
         [JsonObject(MemberSerialization.OptIn)]
         private class Configuration : SerializableConfiguration
         {
+            [JsonProperty("Admin debug bounds", DefaultValueHandling = DefaultValueHandling.Ignore)]
+            public bool AdminDebugBounds;
+
             [JsonProperty("Limit players to one helicopter type at a time")]
             public bool LimitPlayersToOneHelicopterType;
 
