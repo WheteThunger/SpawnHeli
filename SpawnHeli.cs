@@ -642,7 +642,7 @@ namespace Oxide.Plugins
             foreach (var collider in colliderList)
             {
                 var hitEntity = collider.ToBaseEntity();
-                if (hitEntity == ignoreEntity || hitEntity.GetParentEntity() == ignoreEntity)
+                if (hitEntity == ignoreEntity || hitEntity?.GetParentEntity() == ignoreEntity)
                     continue;
 
                 hitSomething = true;
