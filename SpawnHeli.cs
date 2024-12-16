@@ -93,6 +93,8 @@ namespace Oxide.Plugins
                 if (vehicleInfo == null || !vehicleInfo.Data.HasVehicle(heli))
                     continue;
 
+                SetupHeli(heli);
+
                 if (heli.OwnerID != 0 && HasPermission(heli.OwnerID.ToString(), vehicleInfo.Permissions.UnlimitedFuel, VehicleInfo.All.UnlimitedFuel))
                 {
                     EnableUnlimitedFuel(heli);
@@ -771,6 +773,11 @@ namespace Oxide.Plugins
             return Quaternion.Euler(0, player.eyes.rotation.eulerAngles.y - vehicleInfo.Config.FixedSpawnDistanceConfig.RotationAngle, 0);
         }
 
+        private static void SetupHeli(PlayerHelicopter heli)
+        {
+            UnityEngine.Object.Destroy(heli.GetComponent<MagnetLiftable>());
+        }
+
         private static void EnableUnlimitedFuel(PlayerHelicopter heli)
         {
             if (heli.GetFuelSystem() is not EntityFuelSystem fuelSystem)
@@ -927,6 +934,7 @@ namespace Oxide.Plugins
                 heli.startHealth = vehicleInfo.Config.SpawnHealth;
             }
 
+            SetupHeli(heli);
             heli.Spawn();
 
             if (HasPermission(player, vehicleInfo.Permissions.UnlimitedFuel, VehicleInfo.All.UnlimitedFuel))
