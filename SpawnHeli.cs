@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Heli", "SpooksAU", "3.1.0")]
+    [Info("Spawn Heli", "SpooksAU", "3.1.1")]
     [Description("Allows players to spawn helicopters")]
     internal class SpawnHeli : CovalencePlugin
     {
