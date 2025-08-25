@@ -7,11 +7,12 @@ using System.ComponentModel;
 using System.Linq;
 using Facepunch;
 using Oxide.Core.Libraries.Covalence;
+using Oxide.Core.Plugins;
 using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Spawn Heli", "SpooksAU", "3.1.1")]
+    [Info("Spawn Heli", "SpooksAU", "3.2.0")]
     [Description("Allows players to spawn helicopters")]
     internal class SpawnHeli : CovalencePlugin
     {
@@ -281,6 +282,150 @@ namespace Oxide.Plugins
 
         #endregion
 
+        #region API
+
+        [HookMethod(nameof(API_GetMinicopter))]
+        public PlayerHelicopter API_GetMinicopter(BasePlayer player)
+        {
+            return FindPlayerVehicle(_vehicleInfoManager.Minicopter, player);
+        }
+
+        [HookMethod(nameof(API_GetScrapTransportHelicopter))]
+        public PlayerHelicopter API_GetScrapTransportHelicopter(BasePlayer player)
+        {
+            return FindPlayerVehicle(_vehicleInfoManager.ScrapTransportHelicopter, player);
+        }
+
+        [HookMethod(nameof(API_GetAttackHelicopter))]
+        public PlayerHelicopter API_GetAttackHelicopter(BasePlayer player)
+        {
+            return FindPlayerVehicle(_vehicleInfoManager.AttackHelicopter, player);
+        }
+
+        [HookMethod(nameof(API_SpawnMinicopter))]
+        public PlayerHelicopter API_SpawnMinicopter(BasePlayer player, Dictionary<string, object> rawOptions)
+        {
+            return SpawnHeliForApi(_vehicleInfoManager.Minicopter, player, rawOptions);
+        }
+
+        [HookMethod(nameof(API_SpawnScrapTransportHelicopter))]
+        public PlayerHelicopter API_SpawnScrapTransportHelicopter(BasePlayer player, Dictionary<string, object> rawOptions)
+        {
+            return SpawnHeliForApi(_vehicleInfoManager.ScrapTransportHelicopter, player, rawOptions);
+        }
+
+        [HookMethod(nameof(API_SpawnAttackHelicopter))]
+        public PlayerHelicopter API_SpawnAttackHelicopter(BasePlayer player, Dictionary<string, object> rawOptions)
+        {
+            return SpawnHeliForApi(_vehicleInfoManager.AttackHelicopter, player, rawOptions);
+        }
+
+        private PlayerHelicopter SpawnHeliForApi(VehicleInfo vehicleInfo, BasePlayer player, Dictionary<string, object> rawOptions)
+        {
+            SpawnOptions parsedOptions;
+            if (rawOptions == null)
+            {
+                parsedOptions = default;
+            }
+            else if (!SpawnOptions.TryParseApiOptions(rawOptions, out parsedOptions))
+            {
+                return null;
+            }
+
+            return AttemptSpawnOrFetchHeli(vehicleInfo, player.IPlayer, player, parsedOptions);
+        }
+
+        private struct SpawnOptions
+        {
+            private static readonly string FieldPosition = "Position";
+            private static readonly string FieldRotation = "Rotation";
+            private static readonly string FieldCheckHooks = "CheckHooks";
+            private static readonly string FieldCheckCooldown = "CheckCooldown";
+            private static readonly string FieldCheckBuildingBlocked = "CheckBuildingBlocked";
+            private static readonly string FieldCheckSpace = "CheckSpace";
+            private static readonly string FieldAutoMount = "AutoMount";
+            private static readonly string FieldStartCooldown = "StartCooldown";
+            private static readonly string FieldAutoRepair = "AutoRepair";
+            private static readonly string FieldAutoFetch = "AutoFetch";
+            private static readonly string FieldEnforceHelicopterLimit = "EnforceHelicopterLimit";
+            private static readonly string FieldAutoDespawnOtherHelicopterTypes = "AutoDespawnOtherHelicopterTypes";
+            private static readonly string FieldAllowWhileOccupied = "AllowWhileOccupied";
+            private static readonly string FieldMaxFetchDistance = "MaxFetchDistance";
+
+            private static readonly HashSet<string> KnownFields = new()
+            {
+                FieldPosition, FieldRotation, FieldCheckHooks, FieldCheckCooldown,
+                FieldCheckBuildingBlocked, FieldCheckSpace, FieldAutoMount, FieldStartCooldown,
+                FieldAutoRepair, FieldAutoFetch, FieldEnforceHelicopterLimit,
+                FieldAllowWhileOccupied, FieldMaxFetchDistance,
+            };
+
+            public static bool TryParseApiOptions(Dictionary<string, object> rawOptions, out SpawnOptions parsedOptions)
+            {
+                parsedOptions = new SpawnOptions();
+                if (!TryGetOption(rawOptions, FieldPosition, out parsedOptions.Position)
+                    || !TryGetOption(rawOptions, FieldRotation, out parsedOptions.Rotation)
+                    || !TryGetOption(rawOptions, FieldCheckHooks, out parsedOptions.CheckHooks)
+                    || !TryGetOption(rawOptions, FieldCheckCooldown, out parsedOptions.CheckCooldown)
+                    || !TryGetOption(rawOptions, FieldCheckBuildingBlocked, out parsedOptions.CheckBuildingBlocked)
+                    || !TryGetOption(rawOptions, FieldCheckSpace, out parsedOptions.CheckSpace)
+                    || !TryGetOption(rawOptions, FieldAutoMount, out parsedOptions.AutoMount)
+                    || !TryGetOption(rawOptions, FieldStartCooldown, out parsedOptions.StartCooldown)
+                    || !TryGetOption(rawOptions, FieldAutoRepair, out parsedOptions.AutoRepair)
+                    || !TryGetOption(rawOptions, FieldAutoFetch, out parsedOptions.AutoFetch)
+                    || !TryGetOption(rawOptions, FieldEnforceHelicopterLimit, out parsedOptions.EnforceHelicopterLimit)
+                    || !TryGetOption(rawOptions, FieldAutoDespawnOtherHelicopterTypes, out parsedOptions.AutoDespawnOtherHelicopterTypes)
+                    || !TryGetOption(rawOptions, FieldAllowWhileOccupied, out parsedOptions.AllowWhileOccupied)
+                    || !TryGetOption(rawOptions, FieldMaxFetchDistance, out parsedOptions.MaxFetchDistance))
+                    return false;
+
+                foreach (var key in rawOptions.Keys)
+                {
+                    if (!KnownFields.Contains(key))
+                    {
+                        LogWarning($"Unknown option '{key}' in API options. Known options are: {string.Join(", ", KnownFields)}");
+                    }
+                }
+
+                return true;
+            }
+
+            private static bool TryGetOption<T>(Dictionary<string, object> dict, string key, out T result)
+            {
+                result = default;
+
+                // Missing fields are OK since all are optional.
+                if (!dict.TryGetValue(key, out var value))
+                    return true;
+
+                if (value is not T valueOfType)
+                {
+                    LogError($"Invalid type for option '{key}': expected {typeof(T).Name}, got {value.GetType().Name}");
+                    return false;
+                }
+
+                result = valueOfType;
+                return true;
+            }
+
+            public Vector3? Position;
+            public Quaternion? Rotation;
+            public bool? CheckHooks;
+            public bool? CheckCooldown;
+            public bool? CheckSpace;
+            public bool? CheckBuildingBlocked;
+            public bool? AutoMount;
+            public bool? StartCooldown;
+            public bool? AutoRepair;
+            public bool? AutoFetch;
+            public bool? EnforceHelicopterLimit;
+            public bool? AutoDespawnOtherHelicopterTypes;
+            public bool? AllowWhileOccupied;
+            public float? MaxFetchDistance;
+        }
+
+        #endregion
+
         #region Commands
 
         private void CommandSpawnMinicopter(IPlayer player, string cmd, string[] args)
@@ -298,29 +443,26 @@ namespace Oxide.Plugins
             SpawnCommandInternal(_vehicleInfoManager.AttackHelicopter, player, cmd, args);
         }
 
-        private void SpawnCommandInternal(VehicleInfo vehicleInfo, IPlayer player, string command, string[] args)
+        private PlayerHelicopter AttemptSpawnOrFetchHeli(VehicleInfo vehicleInfo, IPlayer player, BasePlayer basePlayer, SpawnOptions options = default)
         {
-            if (vehicleInfo == null
-                || !VerifyPlayer(player, out var basePlayer)
-                || !VerifyPermission(player, vehicleInfo.Permissions.Spawn, VehicleInfo.All.Spawn))
-                return;
-
             var heli = FindPlayerVehicle(vehicleInfo, basePlayer);
             if (heli != null)
             {
-                if (vehicleInfo.Config.AutoFetch && HasPermission(player, vehicleInfo.Permissions.Fetch, VehicleInfo.All.Fetch))
+                if ((options.AutoFetch ?? vehicleInfo.Config.AutoFetch)
+                    && HasPermission(player, vehicleInfo.Permissions.Fetch, VehicleInfo.All.Fetch))
                 {
-                    FetchVehicle(vehicleInfo, player, basePlayer, heli);
+                    if (TryFetchVehicle(vehicleInfo, player, basePlayer, heli, options))
+                        return heli;
                 }
                 else
                 {
                     player.Reply(GetMessage(player.Id, vehicleInfo.Messages.AlreadySpawned));
                 }
 
-                return;
+                return null;
             }
 
-            if (_config.LimitPlayersToOneHelicopterType)
+            if (options.EnforceHelicopterLimit ?? _config.LimitPlayersToOneHelicopterType)
             {
                 foreach (var otherVehicleInfo in _vehicleInfoManager.AllVehicles)
                 {
@@ -331,30 +473,52 @@ namespace Oxide.Plugins
                     if (otherVehicle == null || otherVehicle.IsDestroyed)
                         continue;
 
-                    if (!TryDespawnHeli(otherVehicleInfo, otherVehicle, basePlayer))
+                    if (!TryDespawnConflictingHeli(otherVehicleInfo, otherVehicle, basePlayer, options))
                     {
                         player.Reply(GetMessage(player.Id, LangEntry.ErrorConflictingHeli));
-                        return;
+                        return null;
                     }
 
                     otherVehicle.Kill();
                 }
             }
 
-            if (!VerifyOffCooldown(vehicleInfo, basePlayer, vehicleInfo.Config.SpawnCooldowns, vehicleInfo.Data.SpawnCooldowns)
-                || !vehicleInfo.Config.CanSpawnBuildingBlocked && !VerifyNotBuildingBlocked(player, basePlayer)
-                || SpawnWasBlocked(vehicleInfo, basePlayer)
-                || !VerifyValidSpawnOrFetchPosition(vehicleInfo, basePlayer, out var position, out var rotation))
-                return;
+            if (options.CheckCooldown != false
+                && !VerifyOffCooldown(vehicleInfo, basePlayer, vehicleInfo.Config.SpawnCooldowns, vehicleInfo.Data.SpawnCooldowns))
+                return null;
 
-            heli = SpawnVehicle(vehicleInfo, basePlayer, position, rotation);
+            if ((options.CheckBuildingBlocked ?? !vehicleInfo.Config.CanSpawnBuildingBlocked)
+                && !VerifyNotBuildingBlocked(player, basePlayer))
+                return null;
+
+            if (options.CheckHooks != false
+                && SpawnWasBlocked(vehicleInfo, basePlayer))
+                return null;
+
+            if (!VerifyValidSpawnOrFetchPosition(vehicleInfo, basePlayer, out var position, out var rotation, options))
+                return null;
+
+            heli = SpawnVehicle(vehicleInfo, basePlayer, position, rotation, options);
             if (heli == null)
-                return;
+                return null;
 
-            if (!HasPermission(basePlayer, vehicleInfo.Permissions.NoCooldown, VehicleInfo.All.NoCooldown))
+            if (options.StartCooldown != false
+                && !HasPermission(basePlayer, vehicleInfo.Permissions.NoCooldown, VehicleInfo.All.NoCooldown))
             {
                 _data.StartSpawnCooldown(vehicleInfo, basePlayer);
             }
+
+            return heli;
+        }
+
+        private void SpawnCommandInternal(VehicleInfo vehicleInfo, IPlayer player, string command, string[] args)
+        {
+            if (vehicleInfo == null
+                || !VerifyPlayer(player, out var basePlayer)
+                || !VerifyPermission(player, vehicleInfo.Permissions.Spawn, VehicleInfo.All.Spawn))
+                return;
+
+            AttemptSpawnOrFetchHeli(vehicleInfo, player, basePlayer);
         }
 
         private void CommandFetchMinicopter(IPlayer player, string cmd, string[] args)
@@ -380,7 +544,7 @@ namespace Oxide.Plugins
                 || !VerifyVehicleExists(player, basePlayer, vehicleInfo, out var heli))
                 return;
 
-            FetchVehicle(vehicleInfo, player, basePlayer, heli);
+            TryFetchVehicle(vehicleInfo, player, basePlayer, heli);
         }
 
         private void CommandDespawnMinicopter(IPlayer player, string cmd, string[] args)
@@ -637,7 +801,7 @@ namespace Oxide.Plugins
             if (ignoreEntity == null)
                 return Physics.CheckBox(obb.position, obb.extents, obb.rotation, layerMask, QueryTriggerInteraction.Ignore);
 
-            var colliderList = Pool.GetList<Collider>();
+            var colliderList = Pool.Get<List<Collider>>();
             Vis.Colliders(obb, colliderList, layerMask, QueryTriggerInteraction.Ignore);
             var hitSomething = false;
 
@@ -651,19 +815,23 @@ namespace Oxide.Plugins
                 break;
             }
 
-            Pool.FreeList(ref colliderList);
+            Pool.FreeUnmanaged(ref colliderList);
             return hitSomething;
         }
 
-        private bool VerifyValidSpawnOrFetchPosition(VehicleInfo vehicleInfo, BasePlayer player, out Vector3 position, out Quaternion rotation, PlayerHelicopter existingHeli = null)
+        private bool VerifyValidSpawnOrFetchPosition(VehicleInfo vehicleInfo, BasePlayer player, out Vector3 position, out Quaternion rotation, SpawnOptions options, PlayerHelicopter existingHeli = null)
         {
             position = Vector3.zero;
             rotation = Quaternion.identity;
 
             if (vehicleInfo.Config.FixedSpawnDistanceConfig.Enabled)
             {
-                position = GetFixedPositionForPlayer(vehicleInfo, player);
-                rotation = GetFixedRotationForPlayer(vehicleInfo, player);
+                position = options.Position ?? GetFixedPositionForPlayer(vehicleInfo, player);
+                rotation = options.Rotation ?? GetFixedRotationForPlayer(vehicleInfo, player);
+            }
+            else if (options.Position.HasValue)
+            {
+                position = options.Position.Value;
             }
             else
             {
@@ -704,9 +872,10 @@ namespace Oxide.Plugins
                 Ddraw.Box(player, playerObb, Color.cyan, 5f);
             }
 
-            if (CheckBox(mainObb, SpaceCheckLayerMask, existingHeli)
-                || CheckBox(tailObb, SpaceCheckLayerMask, existingHeli)
-                || CheckBox(playerObb, Rust.Layers.Mask.Player_Server, player))
+            if (options.CheckSpace != false && (
+                    CheckBox(mainObb, SpaceCheckLayerMask, existingHeli)
+                    || CheckBox(tailObb, SpaceCheckLayerMask, existingHeli)
+                    || CheckBox(playerObb, Rust.Layers.Mask.Player_Server, player)))
             {
                 player.ChatMessage(GetMessage(player.UserIDString, LangEntry.InsufficientSpace));
                 return false;
@@ -806,7 +975,7 @@ namespace Oxide.Plugins
 
         private static void UnparentPlayers(PlayerHelicopter heli)
         {
-            var tempList = Pool.GetList<BasePlayer>();
+            var tempList = Pool.Get<List<BasePlayer>>();
 
             try
             {
@@ -826,7 +995,7 @@ namespace Oxide.Plugins
             }
             finally
             {
-                Pool.FreeList(ref tempList);
+                Pool.FreeUnmanaged(ref tempList);
             }
         }
 
@@ -860,31 +1029,44 @@ namespace Oxide.Plugins
                    || HasPermission(player, vehicleInfo.Permissions.AutoMount, VehicleInfo.All.AutoMount);
         }
 
-        private void MaybeAutoMount(VehicleInfo vehicleInfo, BasePlayer player, PlayerHelicopter heli)
+        private void MaybeAutoMount(VehicleInfo vehicleInfo, BasePlayer player, PlayerHelicopter heli, SpawnOptions options)
         {
-            if (!ShouldAutoMount(vehicleInfo, player))
+            if (!(options.AutoMount ?? ShouldAutoMount(vehicleInfo, player)))
                 return;
 
             TryMountPlayer(player, heli);
         }
 
-        private void FetchVehicle(VehicleInfo vehicleInfo, IPlayer player, BasePlayer basePlayer, PlayerHelicopter heli)
+        private bool TryFetchVehicle(VehicleInfo vehicleInfo, IPlayer player, BasePlayer basePlayer, PlayerHelicopter heli, SpawnOptions options = default)
         {
             var isOccupied = IsHeliOccupied(heli);
-            if (isOccupied && (!vehicleInfo.Config.CanFetchWhileOccupied
+            var canFetchWhileOccupied = options.AllowWhileOccupied ?? vehicleInfo.Config.CanFetchWhileOccupied;
+            if (isOccupied && (!canFetchWhileOccupied
                                || basePlayer.GetMountedVehicle() == heli
                                || basePlayer.GetParentEntity() == heli))
             {
                 basePlayer.ChatMessage(GetMessage(basePlayer.UserIDString, LangEntry.ErrorHeliOccupied));
-                return;
+                return false;
             }
 
-            if (!VerifyVehicleWithinDistance(player, basePlayer, heli, vehicleInfo.Config.MaxFetchDistance)
-                || !VerifyOffCooldown(vehicleInfo, basePlayer, vehicleInfo.Config.FetchCooldowns, vehicleInfo.Data.FetchCooldowns)
-                || !vehicleInfo.Config.CanFetchBuildingBlocked && !VerifyNotBuildingBlocked(player, basePlayer)
-                || FetchWasBlocked(vehicleInfo, basePlayer, heli)
-                || !VerifyValidSpawnOrFetchPosition(vehicleInfo, basePlayer, out var position, out var rotation, heli))
-                return;
+            var maxFetchDistance = options.MaxFetchDistance ?? vehicleInfo.Config.MaxFetchDistance;
+            if (!VerifyVehicleWithinDistance(player, basePlayer, heli, maxFetchDistance))
+                return false;
+
+            if (options.CheckCooldown != false
+                && !VerifyOffCooldown(vehicleInfo, basePlayer, vehicleInfo.Config.FetchCooldowns, vehicleInfo.Data.FetchCooldowns))
+                return false;
+
+            if ((options.CheckBuildingBlocked ?? !vehicleInfo.Config.CanFetchBuildingBlocked)
+                && !VerifyNotBuildingBlocked(player, basePlayer))
+                return false;
+
+            if (options.CheckHooks != false
+                && FetchWasBlocked(vehicleInfo, basePlayer, heli))
+                return false;
+
+            if (!VerifyValidSpawnOrFetchPosition(vehicleInfo, basePlayer, out var position, out var rotation, options, heli))
+                return false;
 
             if (isOccupied)
             {
@@ -899,12 +1081,13 @@ namespace Oxide.Plugins
                 UnparentPlayers(heli);
             }
 
-            if (vehicleInfo.Config.RepairOnFetch && vehicleInfo.Config.SpawnHealth > 0)
+            if ((options.AutoRepair ?? vehicleInfo.Config.RepairOnFetch)
+                && vehicleInfo.Config.SpawnHealth > 0)
             {
                 heli.SetHealth(Math.Max(heli.Health(), vehicleInfo.Config.SpawnHealth));
             }
 
-            // Terminate on client so it doesn't animate from the previous location, since that can hinder stealth.
+            // Terminate on client so that it doesn't animate from the previous location, since that can hinder stealth.
             heli.TerminateOnClient(BaseNetworkable.DestroyMode.None);
 
             heli.rigidBody.velocity = Vector3.zero;
@@ -914,15 +1097,17 @@ namespace Oxide.Plugins
             heli.UpdateNetworkGroup();
             NetworkUtils.SendUpdateImmediateRecursive(heli);
 
-            if (!HasPermission(basePlayer, vehicleInfo.Permissions.NoCooldown, VehicleInfo.All.NoCooldown))
+            if (options.StartCooldown != false
+                && !HasPermission(basePlayer, vehicleInfo.Permissions.NoCooldown, VehicleInfo.All.NoCooldown))
             {
                 _data.StartFetchCooldown(vehicleInfo, basePlayer);
             }
 
-            MaybeAutoMount(vehicleInfo, basePlayer, heli);
+            MaybeAutoMount(vehicleInfo, basePlayer, heli, options);
+            return true;
         }
 
-        private PlayerHelicopter SpawnVehicle(VehicleInfo vehicleInfo, BasePlayer player, Vector3 position, Quaternion rotation, bool allowAutoMount = true)
+        private PlayerHelicopter SpawnVehicle(VehicleInfo vehicleInfo, BasePlayer player, Vector3 position, Quaternion rotation, SpawnOptions options)
         {
             var heli = GameManager.server.CreateEntity(vehicleInfo.PrefabPath, position, rotation) as PlayerHelicopter;
             if (heli == null)
@@ -947,10 +1132,7 @@ namespace Oxide.Plugins
             }
 
             _data.RegisterVehicle(vehicleInfo, player.UserIDString, heli);
-            if (allowAutoMount)
-            {
-                MaybeAutoMount(vehicleInfo, player, heli);
-            }
+            MaybeAutoMount(vehicleInfo, player, heli, options);
 
             return heli;
         }
@@ -966,15 +1148,17 @@ namespace Oxide.Plugins
 
             var position = customPosition ?? GetFixedPositionForPlayer(vehicleInfo, player);
             var rotation = customPosition.HasValue ? Quaternion.identity : GetFixedRotationForPlayer(vehicleInfo, player);
-            SpawnVehicle(vehicleInfo, player, position, rotation, allowAutoMount: false);
+            SpawnVehicle(vehicleInfo, player, position, rotation, new SpawnOptions { AutoMount = false });
         }
 
-        private bool TryDespawnHeli(VehicleInfo vehicleInfo, PlayerHelicopter heli, BasePlayer basePlayer)
+        private bool TryDespawnConflictingHeli(VehicleInfo vehicleInfo, PlayerHelicopter heli, BasePlayer basePlayer, SpawnOptions options)
         {
-            if (!_config.AutoDespawnOtherHelicopterTypes)
+            var autoDespawn = options.AutoDespawnOtherHelicopterTypes ?? _config.AutoDespawnOtherHelicopterTypes;
+            if (!autoDespawn)
                 return false;
 
-            if (!vehicleInfo.Config.CanDespawnWhileOccupied && IsHeliOccupied(heli))
+            var allowWhileOccupied = options.AllowWhileOccupied ?? vehicleInfo.Config.CanDespawnWhileOccupied;
+            if (!allowWhileOccupied && IsHeliOccupied(heli))
                 return false;
 
             if (DespawnWasBlocked(vehicleInfo, basePlayer, heli))

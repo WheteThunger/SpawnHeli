@@ -503,7 +503,7 @@ Each vehicle section (`Minicopter`, `ScrapTransportHelicopter`, and `AttackHelic
 - `Fetch commands` -- Determines which commands can be used to fetch the heli.
 - `Despawn commands` -- Determines which commands can be used to despawn the heli.
 - `Can despawn while occupied` (`true` or `false`) -- Determines whether players can despawn their helicopter while it is occupied. A helicopter is considered occupied if a player is mounted to it, or if passengers are in the transport bay (i.e., for Scrap Transport Helicopters).
-- `Can fetch while occupied` (`true` or `false`) -- Determines whether players can fetch their helicopter while it is occupied. While `true`, fetching the heli will automatically dismount all players. Regardless of this setting, players cannot fetched their helicopter while they are occupying it.
+- `Can fetch while occupied` (`true` or `false`) -- Determines whether players can fetch their helicopter while it is occupied. While `true`, fetching the heli will automatically dismount all players. Regardless of this setting, players cannot be fetched their helicopter while they are occupying it.
 - `Can spawn while building blocked` (`true` or `false`) -- Determines whether players can spawn their helicopter while building blocked.
 - `Can fetch while building blocked` (`true` or `false`) -- Determines whether players can fetch their helicopter while building blocked.
 - `Auto fetch` (`true` or `false`) -- Determines whether your existing helicopter will be automatically fetched when using the spawn command. This feature only applies to players who have the fetch permission, and it is subject to the player's fetch cooldown.
@@ -522,13 +522,13 @@ Each vehicle section (`Minicopter`, `ScrapTransportHelicopter`, and `AttackHelic
   - `Enabled` (`true` or `false`) -- Determines whether instant takeoff is enabled.
   - `Require permission` (`true` or `false`) -- Determines whether the owner of the helicopter needs permission for this feature to work.
 - `Only owner and team can mount` (`true` or `false`) -- Set to `true` to only allow the owner and their team members to be able to mount the helicopter.
-- `Destroy on disconnect` (`true` or `false`) -- Determines whether player helicopters will be despawned when the owner disconnects from the server. Note: If a player is mounted to the helicopter when the owner disconnects, the despawn will be delayed until no more players are mounted to the it.
+- `Destroy on disconnect` (`true` or `false`) -- Determines whether player helicopters will be despawned when the owner disconnects from the server. Note: If a player is mounted to the helicopter when the owner disconnects, the despawn will be delayed until no more players are mounted to it.
 - `Fuel` -- Determines how much fuel helicopters will spawn with. Note: Fuel configuration does not apply to players that have the unlimited fuel permission.
   - `Default fuel amount` -- Determines the amount of low grade fuel to add to helicopters when spawned. Set to `-1` for max stack size (which depends on the server, but is 500 in vanilla).
   - `Fuel profiles requiring permission` -- Use this section to customize the fuel amount for different players. The plugin will generate a permission for each fuel profile of the format `spawnheli.<heli-type>.fuel.<suffix>`. For example, `100` for Minicopter would generate the permission `spawnheli.minicopter.fuel.100`. Granting one of those permissions to a player will cause their helicopter to spawn with that amount of low grade fuel, overriding the `Default fuel amount`. Note: If multiple such permissions are granted to a player, the last one will apply, based on the order in the config.
     - `Fuel amount` -- Determines the amount of fuel to add when the helicopter is spawned, if this profile is assigned to a player.
     - `Permission suffix` -- Determines the permission generated, like `spawnheli.<heli-type>.fuel.<suffix>`.
-- `SpawnHealth` -- Determines the amount of health with which helicopters will spawn. Set to 0 or less to have no effect (i.e., to make helicopters spawn with vanilla health). Note: Collisions cause helicopters to take damage equal to a percentage of their health, so changing this will not effect how many collisions helicopters can take before being destroyed.
+- `SpawnHealth` -- Determines the amount of health with which helicopters will spawn. Set to 0 or less to have no effect (i.e., to make helicopters spawn with vanilla health). Note: Collisions cause helicopters to take damage equal to a percentage of their health, so changing this will not affect how many collisions helicopters can take before being destroyed.
 - `Spawn cooldowns` -- Spawn cooldowns determine how often players can spawn the helicopter.
   - `Default cooldown (seconds)` -- The default spawn cooldown applies to players who have not been granted any permissions in `Cooldown profiles requiring permission`.
   - `Cooldown profiles requiring permission` -- Use this section to customize spawn cooldowns for different players. The plugin will generate a permission for each profile of the format `spawnheli.<heli-type>.cooldown.spawn.<suffix>`. Note: If multiple such permissions are granted to a player, the last one will apply, based on the order in the config.
@@ -541,6 +541,68 @@ Each vehicle section (`Minicopter`, `ScrapTransportHelicopter`, and `AttackHelic
     - `Permission suffix` -- Determines the permission generated, like `spawnheli.<heli-type>.cooldown.fetch.<suffix>`.
 
 ## Localization
+
+## Developer API
+
+### Get APIs
+
+```csharp
+Minicopter API_GetMinicopter(BasePlayer player)
+ScrapTransportHelicopter API_GetScrapTransportHelicopter(BasePlayer player)
+AttackHelicopter API_GetAttackHelicopter(BasePlayer player)
+```
+
+Returns the player's helicopter of the specified type, or `null` if the player does not have one.
+
+### Spawn APIs
+
+```csharp
+Minicopter API_SpawnMinicopter(BasePlayer player, Dictionary<string, object> options)
+ScrapTransportHelicopter API_SpawnScrapTransportHelicopter(BasePlayer player, Dictionary<string, object> options)
+AttackHelicopter API_SpawnAttackHelicopter(BasePlayer player, Dictionary<string, object> options)    
+```
+
+- Spawns a helicopter for the specified player.
+- If prohibited for any reason, the method will return `null`, and the player will be informed of the reason, or the error will appear in the server logs. If you want to avoid any prohibitions, you can use the `options` parameter to control the behavior.
+- `options` is an optional dictionary that can contain the following keys. All keys are optional. If any given option is not specified, the behavior will be determined according to the plugin configuration and player permissions.
+  - `"Position"` (`Vector3`) -- The position at which to spawn the helicopter. If not specified, the position will be determined automatically.
+  - `"Rotation"` (`Quaternion`) -- The rotation of the helicopter when spawned. If not specified, the rotation will be determined automatically.
+  - `"CheckHooks"` (`bool`) -- Whether to call spawn/fetch hooks before spawning/fetching the helicopter. Defaults to `true`.
+  - `"CheckCooldown"` (`bool`) -- Whether to check cooldowns before spawning/fetching the helicopter. Defaults to `true`.
+  - `"CheckBuildingBlocked"` (`bool`) -- Whether to check if the player is building blocked. Corresponds to the `Can spawn while building blocked` configuration option.
+  - `"CheckSpace"` (`bool`) -- Whether to check if there is enough space to spawn the helicopter. Defaults to `true`.
+  - `"AutoMount"` (`bool`) -- Whether to automatically mount the player to the pilot seat after spawning or fetching the helicopter. Corresponds to the `Auto mount` configuration option.
+  - `"StartCooldown"` (`bool`) -- Whether to start the corresponding cooldown for the player after spawning or fetching the helicopter.
+  - `"AutoRepair"` (`bool`) -- Whether to repair the helicopter if fetching it. Corresponds to the `Repair on fetch` configuration option.
+  - `"AutoFetch"` (`bool`) -- Whether to automatically fetch the player's existing helicopter if already present. Corresponds to the `Auto fetch` configuration option.
+  - `"EnforceHelicopterLimit"` (`bool`) -- Whether to enforce a limit on how many different helicopter types a player can have at a time. Corresponds to the `Limit players to one helicopter type at a time` configuration option.
+  - `"AutoDespawnOtherHelicopterType"` (`bool`) -- Whether to automatically despawn the player's other helicopters when spawning a new one. Corresponds to the `Try to auto despawn other helicopter types` configuration option.
+  - `"AllowWhileOccupied"` (`bool`) -- Whether players can fetch their existing helicopter while it is occupied by other players, as well as whether their existing helicopter can be automatically despawned while occupied by other players in order to comply with helicopter limits. Corresponds to the `Can fetch while occupied` and `Can despawn while occupied` configuration options.
+  - `"MaxFetchDistance"` (`float`) -- The maximum distance at which players can fetch their helicopters. Set to `-1` for unlimited distance. Corresponds to the `Max fetch distance` configuration option.
+
+Example usage:
+
+```csharp
+SpawnHeli.Call("API_SpawnMinicopter", player, new Dictionary<string, object>
+{
+    // Disable spawn restrictions
+    { "CheckCooldown", false },
+    { "CheckBuildingBlocked", false },
+    { "CheckSpace", false },
+
+    // Handle existing helicopters
+    { "AutoFetch", true },
+    { "EnforceHelicopterLimit", false },
+    { "AllowWhileOccupied", true },
+    { "MaxFetchDistance", -1f },
+    { "AutoDespawnOtherHelicopterType", false },
+
+    // Quality of life
+    { "StartCooldown", false },
+    { "AutoMount", true },
+    { "AutoRepair", false },
+});
+```
 
 ## Developer Hooks
 
